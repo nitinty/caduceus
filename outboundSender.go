@@ -512,6 +512,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			MessageBody: aws.String(string(msgBytes)),
 		})
 		if err != nil {
+			fmt.Println("This the error while send message to queue")
 			level.Info(obs.logger).Log(
 				logging.MessageKey(), "error while sending msg to AWS SQS "+err.Error(),
 				"event.source", msg.Source,
