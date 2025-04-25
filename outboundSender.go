@@ -494,6 +494,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 		return
 	}
 
+	fmt.Println("This is the message received from the CPE: ", msg)
 	if obs.sqsClient != nil {
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
