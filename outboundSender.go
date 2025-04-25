@@ -226,7 +226,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	if b {
 		fmt.Println("Creation a session with AWS SQS")
 		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String("us-east-1"),
+			Region: aws.String("eu-central-1"),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
