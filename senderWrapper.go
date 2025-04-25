@@ -116,6 +116,7 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 		metricsRegistry:     swf.MetricsRegistry,
 		customPIDs:          swf.CustomPIDs,
 		disablePartnerIDs:   swf.DisablePartnerIDs,
+		awsSqsEnabled:       swf.AwsSqsEnabled,
 	}
 
 	if swf.Linger <= 0 {
