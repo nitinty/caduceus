@@ -508,8 +508,9 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 
 		_, err = obs.sqsClient.SendMessage(&sqs.SendMessageInput{
 			// QueueUrl:    aws.String(obs.sqsQueueURL),
-			QueueUrl:    aws.String("https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"),
-			MessageBody: aws.String(string(msgBytes)),
+			QueueUrl:       aws.String("https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"),
+			MessageBody:    aws.String(string(msgBytes)),
+			MessageGroupId: aws.String("caduceus-uat"),
 		})
 		if err != nil {
 			fmt.Println("This the error while send message to queue", err)
