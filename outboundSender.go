@@ -236,6 +236,20 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		// caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
 		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"
 		fmt.Println("SQS Queue URL: ", caduceusOutboundSender.sqsQueueURL)
+
+		input := &sqs.SendMessageInput{
+			MessageBody:            aws.String("Hello from Go test!"),
+			QueueUrl:               aws.String(caduceusOutboundSender.sqsQueueURL),
+			MessageGroupId:         aws.String("test-group"),       // Required for FIFO queues
+			MessageDeduplicationId: aws.String("unique-id-123456"), // Required if ContentBasedDeduplication is false
+		}
+
+		_, err = caduceusOutboundSender.sqsClient.SendMessage(input)
+		if err != nil {
+			fmt.Printf("Failed to send test message: %v\n", err)
+		} else {
+			fmt.Println("Test message sent successfully to FIFO queue!")
+		}
 	}
 
 	// Don't share the secret with others when there is an error.
