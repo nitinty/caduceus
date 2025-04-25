@@ -233,7 +233,8 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
-		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
+		// caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
+		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"
 		fmt.Println("SQS Queue URL: ", caduceusOutboundSender.sqsQueueURL)
 	}
 
@@ -567,7 +568,8 @@ Loop:
 	for {
 		if obs.sqsClient != nil {
 			consumedMessage, err := obs.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
-				QueueUrl:            aws.String(obs.sqsQueueURL),
+				// QueueUrl:            aws.String(obs.sqsQueueURL),
+				QueueUrl:            aws.String("https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"),
 				MaxNumberOfMessages: aws.Int64(1),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
