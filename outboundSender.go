@@ -224,15 +224,17 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	// b := osf.AwsSqsEnabled
 	b := true
 	if b {
-		fmt.Println("Creation a session with AWS SQS")
+		fmt.Println("Creating a session with AWS SQS")
 		sess, err := session.NewSession(&aws.Config{
 			Region: aws.String("eu-central-1"),
 		})
 		if err != nil {
+			fmt.Println("failed to create AWS session: %w", err)
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
 		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
+		fmt.Println("SQS Queue URL: ", caduceusOutboundSender.sqsQueueURL)
 	}
 
 	// Don't share the secret with others when there is an error.
@@ -569,6 +571,7 @@ Loop:
 				MaxNumberOfMessages: aws.Int64(1),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
+				fmt.Println("Error while consuming messages from AWS Sqs", err)
 				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS Sqs", logging.ErrorKey(), err)
 				continue
 			}
