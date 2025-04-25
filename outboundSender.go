@@ -221,6 +221,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		clientMiddleware:  osf.ClientMiddleware,
 	}
 
+	fmt.Println("This is the aws enabled value: ", osf.AwsSqsEnabled)
 	if osf.AwsSqsEnabled {
 		fmt.Println("Creating a session with AWS SQS")
 		sess, err := session.NewSession(&aws.Config{
