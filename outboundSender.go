@@ -246,7 +246,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 		_, err = caduceusOutboundSender.sqsClient.SendMessage(input)
 		if err != nil {
-			fmt.Printf("Failed to send test message: %v\n", err)
+			fmt.Println("Failed to send test message: %v\n", err)
 		} else {
 			fmt.Println("Test message sent successfully to FIFO queue!")
 		}
