@@ -98,6 +98,7 @@ type CaduceusSenderWrapper struct {
 	shutdown            chan struct{}
 	customPIDs          []string
 	disablePartnerIDs   bool
+	awsSqsEnabled       bool
 }
 
 // New produces a new SenderWrapper implemented by CaduceusSenderWrapper
@@ -153,6 +154,7 @@ func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 		CustomPIDs:        sw.customPIDs,
 		DisablePartnerIDs: sw.disablePartnerIDs,
 		QueryLatency:      sw.queryLatency,
+		AwsSqsEnabled:     sw.awsSqsEnabled,
 	}
 
 	ids := make([]struct {
