@@ -221,7 +221,9 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		clientMiddleware:  osf.ClientMiddleware,
 	}
 
-	if osf.AwsSqsEnabled {
+	// b := osf.AwsSqsEnabled
+	b := true
+	if b {
 		sess, err := session.NewSession(&aws.Config{
 			Region: aws.String("us-east-1"),
 		})
@@ -229,7 +231,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
-		caduceusOutboundSender.sqsQueueURL = "https://sqs.us-east-1.amazonaws.com/your-account-id/" + caduceusOutboundSender.id
+		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
 	}
 
 	// Don't share the secret with others when there is an error.
