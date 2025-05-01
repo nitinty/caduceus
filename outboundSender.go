@@ -115,6 +115,18 @@ type OutboundSenderFactory struct {
 
 	// AwsSqsEnabled dictate whether AWS SQS is enabled
 	AwsSqsEnabled bool
+
+	// AwsRegion dictate the region for AWS SQS
+	AwsRegion string
+
+	// If RoleBasedAccess is enabled, accessKey and secretKey will be fetched using IAM temporary credentials
+	RoleBasedAccess bool
+
+	// AccessKey is the AWS accessKey to access dynamodb.
+	AccessKey string
+
+	// SecretKey is the AWS secretKey to go with the accessKey to access dynamodb.
+	SecretKey string
 }
 
 type OutboundSender interface {
@@ -221,34 +233,16 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		clientMiddleware:  osf.ClientMiddleware,
 	}
 
-	fmt.Println("This is the aws enabled value: ", osf.AwsSqsEnabled)
 	if osf.AwsSqsEnabled {
-		fmt.Println("Creating a session with AWS SQS")
 		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String("eu-central-1"),
+			Region: aws.String(osf.AwsRegion),
 		})
 		if err != nil {
-			fmt.Println("failed to create AWS session: %w", err)
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
 		// caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/" + caduceusOutboundSender.id
 		caduceusOutboundSender.sqsQueueURL = "https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"
-		fmt.Println("SQS Queue URL: ", caduceusOutboundSender.sqsQueueURL)
-
-		input := &sqs.SendMessageInput{
-			MessageBody:            aws.String("Hello from Go test!"),
-			QueueUrl:               aws.String(caduceusOutboundSender.sqsQueueURL),
-			MessageGroupId:         aws.String("test-group"),       // Required for FIFO queues
-			MessageDeduplicationId: aws.String("unique-id-123456"), // Required if ContentBasedDeduplication is false
-		}
-
-		_, err = caduceusOutboundSender.sqsClient.SendMessage(input)
-		if err != nil {
-			fmt.Println("Failed to send test message: %v\n", err)
-		} else {
-			fmt.Println("Test message sent successfully to FIFO queue!")
-		}
 	}
 
 	// Don't share the secret with others when there is an error.
@@ -493,7 +487,6 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 		return
 	}
 
-	fmt.Println("This is the message received from the CPE: ", msg)
 	if obs.sqsClient != nil {
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
@@ -512,7 +505,6 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			MessageGroupId: aws.String("caduceus-uat"),
 		})
 		if err != nil {
-			fmt.Println("This the error while send message to queue", err)
 			level.Info(obs.logger).Log(
 				logging.MessageKey(), "error while sending msg to AWS SQS "+err.Error(),
 				"event.source", msg.Source,
@@ -590,7 +582,6 @@ Loop:
 				MaxNumberOfMessages: aws.Int64(1),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
-				fmt.Println("Error while consuming messages from AWS Sqs", err)
 				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS Sqs", logging.ErrorKey(), err)
 				continue
 			}
@@ -598,7 +589,6 @@ Loop:
 			sqsMsg := consumedMessage.Messages[0]
 			msg = &wrp.Message{}
 			err = json.Unmarshal([]byte(*sqsMsg.Body), msg)
-			fmt.Println("This is the message received from AWS SQS: ", msg)
 			if err != nil {
 				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to unmarshal SQS message", logging.ErrorKey(), err)
 				continue
@@ -607,7 +597,8 @@ Loop:
 			obs.sendMessage(msg)
 
 			_, err = obs.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
-				QueueUrl:      aws.String(obs.sqsQueueURL),
+				// QueueUrl:      aws.String(obs.sqsQueueURL),
+				QueueUrl:      aws.String("https://sqs.eu-central-1.amazonaws.com/921772479357/caduceus-uat.fifo"),
 				ReceiptHandle: sqsMsg.ReceiptHandle,
 			})
 			if err != nil {

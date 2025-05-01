@@ -54,6 +54,10 @@ type SenderConfig struct {
 	CustomPIDs                      []string
 	DisablePartnerIDs               bool
 	AwsSqsEnabled                   bool
+	AwsRegion                       string
+	RoleBasedAccess                 bool
+	AccessKey                       string
+	SecretKey                       string
 }
 
 type CaduceusMetricsRegistry interface {

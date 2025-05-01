@@ -71,6 +71,18 @@ type SenderWrapperFactory struct {
 
 	// AwsSqsEnabled dictate whether AWS SQS is enabled
 	AwsSqsEnabled bool
+
+	// AwsRegion dictate the region for AWS SQS
+	AwsRegion string
+
+	// If roleBasedAccess is enabled, accessKey and secretKey will be fetched using IAM temporary credentials
+	RoleBasedAccess bool
+
+	// AccessKey is the AWS accessKey to access dynamodb.
+	AccessKey string
+
+	// SecretKey is the AWS secretKey to go with the accessKey to access dynamodb.
+	SecretKey string
 }
 
 type SenderWrapper interface {
@@ -99,6 +111,10 @@ type CaduceusSenderWrapper struct {
 	customPIDs          []string
 	disablePartnerIDs   bool
 	awsSqsEnabled       bool
+	awsRegion           string
+	roleBasedAccess     bool
+	accessKey           string
+	secretKey           string
 }
 
 // New produces a new SenderWrapper implemented by CaduceusSenderWrapper
@@ -117,6 +133,10 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 		customPIDs:          swf.CustomPIDs,
 		disablePartnerIDs:   swf.DisablePartnerIDs,
 		awsSqsEnabled:       swf.AwsSqsEnabled,
+		awsRegion:           swf.AwsRegion,
+		roleBasedAccess:     swf.RoleBasedAccess,
+		accessKey:           swf.AccessKey,
+		secretKey:           swf.SecretKey,
 	}
 
 	if swf.Linger <= 0 {
@@ -156,6 +176,10 @@ func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 		DisablePartnerIDs: sw.disablePartnerIDs,
 		QueryLatency:      sw.queryLatency,
 		AwsSqsEnabled:     sw.awsSqsEnabled,
+		AwsRegion:         sw.awsRegion,
+		RoleBasedAccess:   sw.roleBasedAccess,
+		AccessKey:         sw.accessKey,
+		SecretKey:         sw.secretKey,
 	}
 
 	ids := make([]struct {

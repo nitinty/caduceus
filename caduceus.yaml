@@ -421,6 +421,18 @@ sender:
   # AwsSqsEnabled dictate whether AWS SQS is enabled
 	awsSqsEnabled: false
 
+  # AwsRegion dictate the region for AWS SQS
+	awsRegion: ""
+
+  # If roleBasedAccess is enabled, accessKey and secretKey will be fetched using IAM temporary credentials
+  roleBasedAccess: false
+
+  # accessKey is the AWS accessKey to access dynamodb.
+  accessKey: "accessKey"
+
+  # secretKey is the AWS secretKey to go with the accessKey to access dynamodb.
+  secretKey: "secretKey"
+
 # (Deprecated)
 # profilerFrequency: 15
 # profilerDuration: 15

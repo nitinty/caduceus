@@ -140,6 +140,10 @@ func caduceus(arguments []string) int {
 		CustomPIDs:        caduceusConfig.Sender.CustomPIDs,
 		DisablePartnerIDs: caduceusConfig.Sender.DisablePartnerIDs,
 		AwsSqsEnabled:     caduceusConfig.Sender.AwsSqsEnabled,
+		AwsRegion:         caduceusConfig.Sender.AwsRegion,
+		RoleBasedAccess:   caduceusConfig.Sender.RoleBasedAccess,
+		AccessKey:         caduceusConfig.Sender.AccessKey,
+		SecretKey:         caduceusConfig.Sender.SecretKey,
 	}.New()
 
 	if err != nil {
