@@ -30,6 +30,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -38,6 +39,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-kit/kit/log"
@@ -234,9 +236,25 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	}
 
 	if osf.AwsSqsEnabled {
-		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String(osf.AwsRegion),
-		})
+		awsRegion, err := osf.getAwsRegionForAwsSqs()
+		if err != nil {
+			return nil, err
+		}
+
+		var awsConfig *aws.Config
+		if osf.RoleBasedAccess {
+			fmt.Println("Role Based Access is Enabled with aws region: ", awsRegion)
+			awsConfig = &aws.Config{
+				Region: aws.String(awsRegion),
+			}
+		} else {
+			awsConfig = &aws.Config{
+				Region:      aws.String(awsRegion),
+				Credentials: credentials.NewStaticCredentials(osf.AccessKey, osf.SecretKey, ""),
+			}
+		}
+
+		sess, err := session.NewSession(awsConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
@@ -268,6 +286,19 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	obs = caduceusOutboundSender
 
 	return
+}
+
+func (osf OutboundSenderFactory) getAwsRegionForAwsSqs() (string, error) {
+	var awsRegion = osf.AwsRegion
+	if len(awsRegion) == 0 {
+		awsRegion = os.Getenv("AWS_REGION")
+	}
+
+	if len(awsRegion) == 0 {
+		return "", fmt.Errorf("%s", "Aws region is not provided")
+	}
+
+	return awsRegion, nil
 }
 
 // Update applies user configurable values for the outbound sender when a
