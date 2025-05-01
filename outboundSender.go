@@ -506,6 +506,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			MessageGroupId: aws.String("caduceus-uat"),
 		})
 		if err != nil {
+			fmt.Println("error while sending msg to AWS SQS: ", err)
 			level.Info(obs.logger).Log(
 				logging.MessageKey(), "error while sending msg to AWS SQS "+err.Error(),
 				"event.source", msg.Source,
@@ -584,6 +585,7 @@ Loop:
 				MaxNumberOfMessages: aws.Int64(1),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
+				fmt.Println("Error while consuming messages from AWS Sqs: ", err)
 				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS Sqs", logging.ErrorKey(), err)
 				continue
 			}
