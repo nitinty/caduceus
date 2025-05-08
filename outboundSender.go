@@ -330,10 +330,12 @@ func (osf OutboundSenderFactory) initializeQueue(sqsClient *sqs.SQS) (string, er
 		attrs := map[string]*string{}
 
 		if osf.FifoBasedQueue {
+			fmt.Println("FiFo based queue is enabled")
 			attrs["FifoQueue"] = aws.String("true")
 			attrs["ContentBasedDeduplication"] = aws.String("true")
 		}
 		if osf.KmsEnabled && osf.KmsKeyARN != "" {
+			fmt.Println("Kms for SQS is enabled with kms key: ", osf.KmsKeyARN)
 			attrs["KmsMasterKeyId"] = aws.String(osf.KmsKeyARN)
 		}
 
