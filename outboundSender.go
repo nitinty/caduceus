@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -262,8 +263,45 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 		fmt.Println("Successfully created a new session with SQS client")
-		caduceusOutboundSender.sqsClient = sqs.New(sess)
-		caduceusOutboundSender.sqsQueueURL = osf.SqsAccountEndpoint + osf.Listener.Webhook.CaduceusQueueName
+
+		sqsClient := sqs.New(sess)
+		queueName := osf.Listener.Webhook.CaduceusQueueName
+		if !strings.HasSuffix(queueName, ".fifo") {
+			queueName += ".fifo"
+		}
+		fmt.Println("AWS SQS queue name: ", queueName)
+
+		getQueueOutput, err := sqsClient.GetQueueUrl(&sqs.GetQueueUrlInput{
+			QueueName: aws.String(queueName),
+		})
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok && aerr.Code() == sqs.ErrCodeQueueDoesNotExist {
+				fmt.Println("Queue in AWS SQS does not exists: ", caduceusOutboundSender.sqsQueueURL)
+				createQueueInput := &sqs.CreateQueueInput{
+					QueueName: aws.String(queueName),
+					Attributes: map[string]*string{
+						"FifoQueue":                 aws.String("true"),
+						"ContentBasedDeduplication": aws.String("true"),
+						"KmsMasterKeyId":            aws.String("arn:aws:kms:eu-central-1:921772479357:key/4c5e649f-de27-4329-97fd-eb9e47063aaa"),
+						"SqsManagedSseEnabled":      aws.String("true"),
+					},
+				}
+
+				createQueueOutput, err := sqsClient.CreateQueue(createQueueInput)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create queue in AWS SQS: %w", err)
+				}
+				caduceusOutboundSender.sqsQueueURL = *createQueueOutput.QueueUrl
+				fmt.Println("Successfully created FIFO queue in AWS SQS: ", caduceusOutboundSender.sqsQueueURL)
+			} else {
+				return nil, fmt.Errorf("failed to get queue URL from AWS SQS: %w", err)
+			}
+		} else {
+			caduceusOutboundSender.sqsQueueURL = *getQueueOutput.QueueUrl
+			fmt.Println("Queue in AWS SQS already exists: ", caduceusOutboundSender.sqsQueueURL)
+		}
+
+		caduceusOutboundSender.sqsClient = sqsClient
 		fmt.Println("This is the AWS SQS queue URL: ", caduceusOutboundSender.sqsQueueURL)
 	}
 
