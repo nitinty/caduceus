@@ -340,8 +340,13 @@ func (osf OutboundSenderFactory) initializeQueue(sqsClient *sqs.SQS) (string, er
 		}
 
 		createQueueOutput, err := sqsClient.CreateQueue(&sqs.CreateQueueInput{
-			QueueName:  aws.String(queueName),
-			Attributes: attrs,
+			QueueName: aws.String(queueName),
+			Attributes: func() map[string]*string {
+				if len(attrs) > 0 {
+					return attrs
+				}
+				return nil
+			}(),
 		})
 		if err != nil {
 			fmt.Println("failed to create queue: ", err)
