@@ -27,6 +27,7 @@ const (
 	QueryDurationHistogram          = "query_duration_histogram_seconds"
 	IncomingQueueLatencyHistogram   = "incoming_queue_latency_histogram_seconds"
 	MsgSendToSqsCount               = "msg_send_to_sqs_count"
+	ReceivedMessageFromSqsCount     = "received_msg_from_sqs_count"
 )
 
 const (
@@ -169,6 +170,7 @@ func CreateOutbounderMetrics(m CaduceusMetricsRegistry, c *CaduceusOutboundSende
 	c.droppedExpiredCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired")
 	c.droppedExpiredBeforeQueueCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired_before_queueing")
 	c.sendMsgToSqsCounter = m.NewGauge(MsgSendToSqsCount).With("url", c.id)
+	c.receivedMsgFromSqsCounter = m.NewGauge(ReceivedMessageFromSqsCount).With("url", c.id)
 
 	c.droppedCutoffCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "cut_off")
 	c.droppedInvalidConfig = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "invalid_config")

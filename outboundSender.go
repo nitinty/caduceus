@@ -193,6 +193,7 @@ type CaduceusOutboundSender struct {
 	sqsQueueURL                      string
 	fifoBasedQueue                   bool
 	sendMsgToSqsCounter              metrics.Gauge
+	receivedMsgFromSqsCounter        metrics.Gauge
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
@@ -711,6 +712,7 @@ Loop:
 			}
 
 			fmt.Println("Successfully received message from AWS SQS: ", msg)
+			obs.receivedMsgFromSqsCounter.Add(1.0)
 			obs.sendMessage(msg)
 
 			fmt.Println("Deleting message from queue: ", obs.sqsQueueURL)
