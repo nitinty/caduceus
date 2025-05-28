@@ -690,7 +690,6 @@ func (obs *CaduceusOutboundSender) dispatcher() {
 Loop:
 	for {
 		if obs.sqsClient != nil {
-			fmt.Println("Receiving message from queue: ", obs.sqsQueueURL)
 			consumedMessage, err := obs.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(obs.sqsQueueURL),
 				MaxNumberOfMessages: aws.Int64(1),
