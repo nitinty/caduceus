@@ -612,10 +612,9 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			MessageBody: aws.String(string(msgBytes)),
 		}
 		fmt.Println("This is the whole msg: ", msg)
-		fmt.Println("This is the msg source: ", msg.Source)
 		fmt.Println("This is the msg deviceId: ", msg.Metadata["/hw-deviceid"])
 		if obs.fifoBasedQueue {
-			input.MessageGroupId = aws.String(msg.Source)
+			input.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
 		}
 		_, err = obs.sqsClient.SendMessage(input)
 		if err != nil {
