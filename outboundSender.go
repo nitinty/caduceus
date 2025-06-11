@@ -616,6 +616,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 		if obs.fifoBasedQueue {
 			input.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
 		}
+		fmt.Println("Size of message that is being sent: ", len(*input.MessageBody))
 		_, err = obs.sqsClient.SendMessage(input)
 		if err != nil {
 			fmt.Println("error while sending msg to AWS SQS: ", err)
