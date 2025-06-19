@@ -169,8 +169,8 @@ func CreateOutbounderMetrics(m CaduceusMetricsRegistry, c *CaduceusOutboundSende
 	c.droppedQueueFullCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "queue_full")
 	c.droppedExpiredCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired")
 	c.droppedExpiredBeforeQueueCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired_before_queueing")
-	c.sendMsgToSqsCounter = m.NewGauge(MsgSendToSqsCount)
-	c.receivedMsgFromSqsCounter = m.NewGauge(ReceivedMessageFromSqsCount)
+	c.sendMsgToSqsCounter = m.NewCounter(MsgSendToSqsCount)
+	c.receivedMsgFromSqsCounter = m.NewCounter(ReceivedMessageFromSqsCount)
 
 	c.droppedCutoffCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "cut_off")
 	c.droppedInvalidConfig = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "invalid_config")

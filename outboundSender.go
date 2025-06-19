@@ -192,8 +192,8 @@ type CaduceusOutboundSender struct {
 	sqsClient                        *sqs.SQS
 	sqsQueueURL                      string
 	fifoBasedQueue                   bool
-	sendMsgToSqsCounter              metrics.Gauge
-	receivedMsgFromSqsCounter        metrics.Gauge
+	sendMsgToSqsCounter              metrics.Counter
+	receivedMsgFromSqsCounter        metrics.Counter
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
