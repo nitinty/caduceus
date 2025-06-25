@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync/atomic"
@@ -113,7 +114,7 @@ func (sh *ServerHandler) ServeHTTP(response http.ResponseWriter, request *http.R
 		response.WriteHeader(http.StatusBadRequest)
 		if err != nil {
 			response.Write([]byte("Invalid payload format.\n"))
-			response.Write([]byte(err.Error()))
+			fmt.Println("This is the error in payload", err)
 			debugLog.Log(messageKey, "Invalid payload format.")
 		} else {
 			response.Write([]byte("Invalid MessageType.\n"))
