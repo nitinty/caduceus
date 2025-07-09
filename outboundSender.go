@@ -629,7 +629,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 		}
 
 		fmt.Println("Successfully sent message to AWS SQS: ", msg)
-		obs.sendMsgToSqsCounter.With("url", obs.id, "source", msg.Source, "destination", msg.Destination).Add(1.0)
+		obs.sendMsgToSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
 		level.Info(obs.logger).Log(
 			logging.MessageKey(), "event added to outbound queue using AWS SQS",
 			"event.source", msg.Source,
@@ -714,7 +714,7 @@ Loop:
 			}
 
 			fmt.Println("Successfully received message from AWS SQS: ", msg)
-			obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source, "destination", msg.Destination).Add(1.0)
+			obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
 			obs.sendMessage(msg)
 
 			fmt.Println("Deleting message from queue: ", obs.sqsQueueURL)

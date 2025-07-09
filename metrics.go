@@ -162,13 +162,13 @@ func Metrics() []xmetrics.Metric {
 			Name:       MsgSendToSqsCount,
 			Help:       "Count of messages delivered to SQS",
 			Type:       "counter",
-			LabelNames: []string{"url", "source", "destination"},
+			LabelNames: []string{"url", "source"},
 		},
 		{
 			Name:       ReceivedMessageFromSqsCount,
 			Help:       "Count of messages received from SQS",
 			Type:       "counter",
-			LabelNames: []string{"url", "source", "destination"},
+			LabelNames: []string{"url", "source"},
 		},
 	}
 }
