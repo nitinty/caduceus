@@ -695,38 +695,42 @@ Loop:
 		if obs.sqsClient != nil {
 			consumedMessage, err := obs.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(obs.sqsQueueURL),
-				MaxNumberOfMessages: aws.Int64(1),
+				MaxNumberOfMessages: aws.Int64(10),
+				WaitTimeSeconds:     aws.Int64(10),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
 				if err != nil {
 					fmt.Printf("Error while consuming messages from AWS SQS: %v\n", err)
 					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS SQS", logging.ErrorKey(), err)
+				} else {
+					time.Sleep(200 * time.Millisecond) // avoid tight loop
 				}
 				continue
 			}
 
-			sqsMsg := consumedMessage.Messages[0]
-			msg = &wrp.Message{}
-			err = json.Unmarshal([]byte(*sqsMsg.Body), msg)
-			if err != nil {
-				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to unmarshal SQS message", logging.ErrorKey(), err)
-				continue
-			}
+			for _, sqsMsg := range consumedMessage.Messages {
+				msg = &wrp.Message{}
+				err = json.Unmarshal([]byte(*sqsMsg.Body), msg)
+				if err != nil {
+					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to unmarshal SQS message", logging.ErrorKey(), err)
+					continue
+				}
 
-			fmt.Println("Successfully received message from AWS SQS: ", msg)
-			obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
-			obs.sendMessage(msg)
+				fmt.Println("Successfully received message from AWS SQS: ", msg)
+				obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
+				obs.sendMessage(msg)
 
-			fmt.Println("Deleting message from queue: ", obs.sqsQueueURL)
-			_, err = obs.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
-				QueueUrl:      aws.String(obs.sqsQueueURL),
-				ReceiptHandle: sqsMsg.ReceiptHandle,
-			})
-			if err != nil {
-				fmt.Printf("Error while deleting messages from AWS SQS: %v\n", err)
-				obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to delete AWS SQS message", logging.ErrorKey(), err)
+				fmt.Println("Deleting message from queue: ", obs.sqsQueueURL)
+				_, err = obs.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
+					QueueUrl:      aws.String(obs.sqsQueueURL),
+					ReceiptHandle: sqsMsg.ReceiptHandle,
+				})
+				if err != nil {
+					fmt.Printf("Error while deleting messages from AWS SQS: %v\n", err)
+					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to delete AWS SQS message", logging.ErrorKey(), err)
+				}
+				fmt.Println("Successfully deleted message from AWS SQS: ", msg)
 			}
-			fmt.Println("Successfully deleted message from AWS SQS: ", msg)
 		} else {
 			// Always pull a new queue in case we have been cutoff or are shutting
 			// down.
