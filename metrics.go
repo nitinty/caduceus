@@ -28,6 +28,8 @@ const (
 	IncomingQueueLatencyHistogram   = "incoming_queue_latency_histogram_seconds"
 	MsgSendToSqsCount               = "msg_send_to_sqs_count"
 	ReceivedMessageFromSqsCount     = "received_msg_from_sqs_count"
+	UnmarshalFailed                 = "unmarshal_failed"
+	DeleteFailed                    = "delete_failed"
 )
 
 const (
@@ -170,6 +172,18 @@ func Metrics() []xmetrics.Metric {
 			Type:       "counter",
 			LabelNames: []string{"url", "source"},
 		},
+		{
+			Name:       UnmarshalFailed,
+			Help:       "Count of messages failed unmarshalled messages received from SQS",
+			Type:       "counter",
+			LabelNames: []string{"url", "source"},
+		},
+		{
+			Name:       DeleteFailed,
+			Help:       "Count of failed deleted messages from SQS",
+			Type:       "counter",
+			LabelNames: []string{"url", "source"},
+		},
 	}
 }
 
@@ -183,6 +197,8 @@ func CreateOutbounderMetrics(m CaduceusMetricsRegistry, c *CaduceusOutboundSende
 	c.droppedExpiredBeforeQueueCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired_before_queueing")
 	c.sendMsgToSqsCounter = m.NewCounter(MsgSendToSqsCount)
 	c.receivedMsgFromSqsCounter = m.NewCounter(ReceivedMessageFromSqsCount)
+	c.unmarshalFailed = m.NewCounter(MsgSendToSqsCount)
+	c.deleteFailed = m.NewCounter(ReceivedMessageFromSqsCount)
 
 	c.droppedCutoffCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "cut_off")
 	c.droppedInvalidConfig = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "invalid_config")
