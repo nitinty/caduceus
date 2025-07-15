@@ -695,7 +695,7 @@ Loop:
 		if obs.sqsClient != nil {
 			consumedMessage, err := obs.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(obs.sqsQueueURL),
-				MaxNumberOfMessages: aws.Int64(10),
+				MaxNumberOfMessages: aws.Int64(20),
 				WaitTimeSeconds:     aws.Int64(10),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
