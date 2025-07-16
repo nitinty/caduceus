@@ -28,6 +28,9 @@ const (
 	IncomingQueueLatencyHistogram   = "incoming_queue_latency_histogram_seconds"
 	MsgSendToSqsCount               = "msg_send_to_sqs_count"
 	ReceivedMessageFromSqsCount     = "received_msg_from_sqs_count"
+	FailedSentMessagesCount         = "failed_sent_msgs_count"
+	FailedReceivedMessagesCount     = "failed_received_msgs_count"
+	FailedDeletedMessagesCount      = "failed_deleted_msgs_count"
 )
 
 const (
@@ -167,6 +170,24 @@ func Metrics() []xmetrics.Metric {
 		{
 			Name:       ReceivedMessageFromSqsCount,
 			Help:       "Count of messages received from SQS",
+			Type:       "counter",
+			LabelNames: []string{"url", "source"},
+		},
+		{
+			Name:       FailedSentMessagesCount,
+			Help:       "Count of messages failed to sent to SQS",
+			Type:       "counter",
+			LabelNames: []string{"url", "source"},
+		},
+		{
+			Name:       FailedReceivedMessagesCount,
+			Help:       "Count of messages failed to receive from SQS",
+			Type:       "counter",
+			LabelNames: []string{"url", "source"},
+		},
+		{
+			Name:       FailedDeletedMessagesCount,
+			Help:       "Count of messages failed to be deleted from SQS",
 			Type:       "counter",
 			LabelNames: []string{"url", "source"},
 		},

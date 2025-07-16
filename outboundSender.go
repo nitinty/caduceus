@@ -194,6 +194,9 @@ type CaduceusOutboundSender struct {
 	fifoBasedQueue                   bool
 	sendMsgToSqsCounter              metrics.Counter
 	receivedMsgFromSqsCounter        metrics.Counter
+	failedSentMsgsCount              metrics.Counter
+	failedReceivedMsgsCount          metrics.Counter
+	failedDeletedMessagesCount       metrics.Counter
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
@@ -620,6 +623,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 		fmt.Println("Size of message that is being sent: ", len(*input.MessageBody))
 		_, err = obs.sqsClient.SendMessage(input)
 		if err != nil {
+			obs.failedSentMsgsCount.With("url", obs.id, "source", msg.Source).Add(1.0)
 			fmt.Println("error while sending msg to AWS SQS: ", err)
 			level.Info(obs.logger).Log(
 				logging.MessageKey(), "error while sending msg to AWS SQS "+err.Error(),
@@ -701,6 +705,7 @@ Loop:
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
 				if err != nil {
+					obs.failedReceivedMsgsCount.With("url", obs.id, "source", msg.Source).Add(1.0)
 					fmt.Printf("Error while consuming messages from AWS SQS: %v\n", err)
 					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS SQS", logging.ErrorKey(), err)
 				} else {
@@ -727,6 +732,7 @@ Loop:
 					ReceiptHandle: sqsMsg.ReceiptHandle,
 				})
 				if err != nil {
+					obs.failedDeletedMessagesCount.With("url", obs.id, "source", msg.Source).Add(1.0)
 					fmt.Printf("Error while deleting messages from AWS SQS: %v\n", err)
 					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to delete AWS SQS message", logging.ErrorKey(), err)
 				}
