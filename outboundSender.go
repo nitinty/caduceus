@@ -621,7 +621,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			input.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
 		}
 		fmt.Println("Size of message that is being sent: ", len(*input.MessageBody))
-		_, err = obs.sqsClient.SendMessage(input)
+		sqsMessageOutput, err := obs.sqsClient.SendMessage(input)
 		if err != nil {
 			obs.failedSentMsgsCount.With("url", obs.id, "source", msg.Source).Add(1.0)
 			fmt.Println("error while sending msg to AWS SQS: ", err)
@@ -639,6 +639,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			logging.MessageKey(), "event added to outbound queue using AWS SQS",
 			"event.source", msg.Source,
 			"event.destination", msg.Destination,
+			"sqs.message.id", sqsMessageOutput.MessageId,
 		)
 	} else {
 		select {
@@ -723,7 +724,7 @@ Loop:
 				}
 
 				fmt.Println("Successfully received message from AWS SQS: ", msg)
-				level.Info(obs.logger).Log(logging.MessageKey(), "Successfully received message from AWS SQS")
+				level.Info(obs.logger).Log(logging.MessageKey(), "Successfully received message from AWS SQS", "sqs.message.id", sqsMsg.MessageId)
 				obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
 				obs.sendMessage(msg)
 
