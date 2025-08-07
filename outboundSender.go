@@ -907,7 +907,33 @@ func (obs *CaduceusOutboundSender) send(urls *ring.Ring, secret, acceptType stri
 
 	retryer := xhttp.RetryTransactor(retryOptions, obs.sender.Do)
 	client := obs.clientMiddleware(doerFunc(retryer))
-	resp, err := client.Do(req)
+
+	maxRetries := 3
+	originalURL := req.URL
+	var resp *http.Response
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		resp, err = client.Do(req)
+
+		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			break // success, no need to retry
+		}
+
+		obs.logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "Retrying request due to failure", "attempt", attempt, "url", originalURL.String(),
+			"status", func() interface{} {
+				if resp != nil {
+					return resp.StatusCode
+				}
+				return "network error"
+			}(),
+			logging.ErrorKey(), err,
+		)
+
+		if attempt < maxRetries {
+			time.Sleep(10 * time.Millisecond)
+			req.URL = originalURL
+		}
+	}
 
 	code := "failure"
 	l := obs.logger
