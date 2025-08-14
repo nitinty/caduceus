@@ -197,6 +197,9 @@ type CaduceusOutboundSender struct {
 	failedSentMsgsCount              metrics.Counter
 	failedReceivedMsgsCount          metrics.Counter
 	failedDeletedMessagesCount       metrics.Counter
+	sqsBatch                         []*sqs.SendMessageBatchRequestEntry
+	sqsBatchMutex                    sync.Mutex
+	sqsBatchTicker                   *time.Ticker
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
@@ -253,6 +256,12 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 	fmt.Println("AWS SQS Enabled: ", osf.AwsSqsEnabled)
 	if osf.AwsSqsEnabled {
+		caduceusOutboundSender.sqsBatchTicker = time.NewTicker(200 * time.Millisecond)
+		go func() {
+			for range caduceusOutboundSender.sqsBatchTicker.C {
+				caduceusOutboundSender.flushSqsBatch()
+			}
+		}()
 		awsRegion, err := osf.getAwsRegionForAwsSqs()
 		if err != nil {
 			return nil, err
@@ -307,6 +316,35 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	obs = caduceusOutboundSender
 
 	return
+}
+
+func (obs *CaduceusOutboundSender) flushSqsBatch() {
+	obs.sqsBatchMutex.Lock()
+	defer obs.sqsBatchMutex.Unlock()
+
+	if len(obs.sqsBatch) == 0 {
+		return
+	}
+
+	batch := obs.sqsBatch
+	obs.sqsBatch = nil
+
+	_, err := obs.sqsClient.SendMessageBatch(&sqs.SendMessageBatchInput{
+		QueueUrl: aws.String(obs.sqsQueueURL),
+		Entries:  batch,
+	})
+	if err != nil {
+		fmt.Println("Error while sending SQS batch:", err)
+		for _, entry := range batch {
+			obs.failedSentMsgsCount.With("url", obs.id, "batchId", *entry.Id).Add(1.0)
+		}
+		return
+	}
+
+	fmt.Printf("Successfully sent SQS batch of %d messages\n", len(batch))
+	for _, entry := range batch {
+		obs.sendMsgToSqsCounter.With("url", obs.id, "batchId", *entry.Id).Add(1.0)
+	}
 }
 
 func (osf OutboundSenderFactory) getQueueName() string {
@@ -505,6 +543,13 @@ func (obs *CaduceusOutboundSender) Shutdown(gentle bool) {
 	obs.deliverUntilGauge.Set(float64(obs.deliverUntil.Unix()))
 	obs.queueDepthGauge.Set(0) //just in case
 	obs.mutex.Unlock()
+
+	if obs.sqsClient != nil {
+		obs.flushSqsBatch()
+		if obs.sqsBatchTicker != nil {
+			obs.sqsBatchTicker.Stop()
+		}
+	}
 }
 
 // RetiredSince returns the time the CaduceusOutboundSender retired (which could be in
@@ -609,38 +654,24 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			return
 		}
 
-		fmt.Println("Sending message to queue: ", obs.sqsQueueURL)
-		input := &sqs.SendMessageInput{
-			QueueUrl:    aws.String(obs.sqsQueueURL),
+		obs.sqsBatchMutex.Lock()
+		defer obs.sqsBatchMutex.Unlock()
+
+		entry := &sqs.SendMessageBatchRequestEntry{
+			Id:          aws.String(fmt.Sprintf("%d", time.Now().UnixNano())),
 			MessageBody: aws.String(string(msgBytes)),
 		}
-		fmt.Println("This is the whole msg: ", msg)
-		fmt.Println("This is the msg deviceId: ", msg.Metadata["/hw-deviceid"])
-		level.Info(obs.logger).Log(logging.MessageKey(), "Message group id: "+msg.Metadata["/hw-deviceid"])
 		if obs.fifoBasedQueue {
-			input.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
-		}
-		fmt.Println("Size of message that is being sent: ", len(*input.MessageBody))
-		sqsMessageOutput, err := obs.sqsClient.SendMessage(input)
-		if err != nil {
-			obs.failedSentMsgsCount.With("url", obs.id, "source", msg.Source).Add(1.0)
-			fmt.Println("error while sending msg to AWS SQS: ", err)
-			level.Info(obs.logger).Log(
-				logging.MessageKey(), "error while sending msg to AWS SQS "+err.Error(),
-				"event.source", msg.Source,
-				"event.destination", msg.Destination,
-			)
-			return
+			entry.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
 		}
 
-		fmt.Println("Successfully sent message to AWS SQS: ", msg)
-		obs.sendMsgToSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
-		level.Info(obs.logger).Log(
-			logging.MessageKey(), "event added to outbound queue using AWS SQS",
-			"event.source", msg.Source,
-			"event.destination", msg.Destination,
-			"sqs.message.id", sqsMessageOutput.MessageId,
-		)
+		obs.sqsBatch = append(obs.sqsBatch, entry)
+
+		// Flush immediately if batch limit reached
+		if len(obs.sqsBatch) >= 10 {
+			go obs.flushSqsBatch()
+		}
+		return
 	} else {
 		select {
 		case obs.queue.Load().(chan *wrp.Message) <- msg:
