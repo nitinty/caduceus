@@ -319,8 +319,8 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 }
 
 func (obs *CaduceusOutboundSender) flushSqsBatch() {
-	obs.sqsBatchMutex.Lock()
-	defer obs.sqsBatchMutex.Unlock()
+	// obs.sqsBatchMutex.Lock()
+	// defer obs.sqsBatchMutex.Unlock()
 
 	if len(obs.sqsBatch) == 0 {
 		return
@@ -546,9 +546,9 @@ func (obs *CaduceusOutboundSender) Shutdown(gentle bool) {
 
 	if obs.sqsClient != nil {
 		obs.flushSqsBatch()
-		if obs.sqsBatchTicker != nil {
-			obs.sqsBatchTicker.Stop()
-		}
+		// if obs.sqsBatchTicker != nil {
+		// 	obs.sqsBatchTicker.Stop()
+		// }
 	}
 }
 
