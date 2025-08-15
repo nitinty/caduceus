@@ -333,6 +333,7 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 			obs.failedSentMsgsCount.With("url", obs.id, "source", *entry.Id).Add(1.0)
 		}
 		obs.sqsBatch = nil
+		obs.sqsBatchMutex.Unlock()
 		return
 	}
 
@@ -341,6 +342,7 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 		obs.sendMsgToSqsCounter.With("url", obs.id, "source", *entry.Id).Add(1.0)
 	}
 	obs.sqsBatch = nil
+	obs.sqsBatchMutex.Unlock()
 }
 
 func (osf OutboundSenderFactory) getQueueName() string {
