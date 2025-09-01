@@ -65,6 +65,7 @@ type AwsSqs struct {
 	FifoBasedQueue  bool
 	KmsEnabled      bool
 	KmsKeyARN       string
+	FlushInterval   time.Duration
 }
 
 type CaduceusMetricsRegistry interface {

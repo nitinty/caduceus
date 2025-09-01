@@ -444,6 +444,8 @@ sender:
     # Only required if kmsEnabled is enabled. kmsKeyARN will identify the ARN which will be used for encryption in AWS SQS Queue.
     kmsKeyARN: ""
 
+    flushInterval: 10s
+
 # (Deprecated)
 # profilerFrequency: 15
 # profilerDuration: 15

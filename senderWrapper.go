@@ -92,6 +92,8 @@ type SenderWrapperFactory struct {
 
 	// Only required if KmsEnabled is enabled. KmsKeyARN will identify the ARN which will be used for encryption in AWS SQS Queue.
 	KmsKeyARN string
+
+	FlushInterval time.Duration
 }
 
 type SenderWrapper interface {
@@ -127,6 +129,7 @@ type CaduceusSenderWrapper struct {
 	fifoBasedQueue      bool
 	kmsEnabled          bool
 	kmsKeyARN           string
+	flushInterval       time.Duration
 }
 
 // New produces a new SenderWrapper implemented by CaduceusSenderWrapper
@@ -152,6 +155,7 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 		fifoBasedQueue:      swf.FifoBasedQueue,
 		kmsEnabled:          swf.KmsEnabled,
 		kmsKeyARN:           swf.KmsKeyARN,
+		flushInterval:       swf.FlushInterval,
 	}
 
 	if swf.Linger <= 0 {
@@ -198,6 +202,7 @@ func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 		FifoBasedQueue:    sw.fifoBasedQueue,
 		KmsEnabled:        sw.kmsEnabled,
 		KmsKeyARN:         sw.kmsKeyARN,
+		FlushInterval:     sw.flushInterval,
 	}
 
 	ids := make([]struct {

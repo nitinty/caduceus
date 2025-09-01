@@ -139,6 +139,8 @@ type OutboundSenderFactory struct {
 
 	// Only required if KmsEnabled is enabled. KmsKeyARN will identify the ARN which will be used for encryption in AWS SQS Queue.
 	KmsKeyARN string
+
+	FlushInterval time.Duration
 }
 
 type OutboundSender interface {
@@ -199,6 +201,8 @@ type CaduceusOutboundSender struct {
 	failedDeletedMessagesCount       metrics.Counter
 	sqsBatch                         []*sqs.SendMessageBatchRequestEntry
 	sqsBatchMutex                    sync.Mutex
+	sqsBatchTicker                   *time.Ticker
+	flushInterval                    time.Duration
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
@@ -255,12 +259,6 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 	fmt.Println("AWS SQS Enabled: ", osf.AwsSqsEnabled)
 	if osf.AwsSqsEnabled {
-		// caduceusOutboundSender.sqsBatchTicker = time.NewTicker(200 * time.Millisecond)
-		// go func() {
-		// 	for range caduceusOutboundSender.sqsBatchTicker.C {
-		// 		caduceusOutboundSender.flushSqsBatch()
-		// 	}
-		// }()
 		awsRegion, err := osf.getAwsRegionForAwsSqs()
 		if err != nil {
 			return nil, err
@@ -288,9 +286,18 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
 		caduceusOutboundSender.sqsQueueURL, err = osf.initializeQueue(caduceusOutboundSender.sqsClient)
 		caduceusOutboundSender.fifoBasedQueue = osf.FifoBasedQueue
+		caduceusOutboundSender.flushInterval = osf.FlushInterval
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Println("Starting ticket to flush sqs batch with flush interval as: ", caduceusOutboundSender.flushInterval.Seconds())
+		caduceusOutboundSender.sqsBatchTicker = time.NewTicker(caduceusOutboundSender.flushInterval)
+		go func() {
+			for range caduceusOutboundSender.sqsBatchTicker.C {
+				caduceusOutboundSender.flushSqsBatch()
+			}
+		}()
 	}
 
 	// Don't share the secret with others when there is an error.
