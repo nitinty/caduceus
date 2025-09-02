@@ -286,17 +286,17 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		caduceusOutboundSender.sqsClient = sqs.New(sess)
 		caduceusOutboundSender.sqsQueueURL, err = osf.initializeQueue(caduceusOutboundSender.sqsClient)
 		caduceusOutboundSender.fifoBasedQueue = osf.FifoBasedQueue
-		if osf.FlushInterval <= 0 {
-			caduceusOutboundSender.flushInterval = 5 * time.Second
-		} else {
-			caduceusOutboundSender.flushInterval = osf.FlushInterval
-		}
-		if err != nil {
-			return nil, err
-		}
+		// if osf.FlushInterval <= 0 {
+		// 	caduceusOutboundSender.flushInterval = 5 * time.Second
+		// } else {
+		// 	caduceusOutboundSender.flushInterval = osf.FlushInterval
+		// }
+		// if err != nil {
+		// 	return nil, err
+		// }
 
-		fmt.Println("Starting ticket to flush sqs batch with flush interval as: ", caduceusOutboundSender.flushInterval.Seconds())
-		caduceusOutboundSender.sqsBatchTicker = time.NewTicker(caduceusOutboundSender.flushInterval)
+		// fmt.Println("Starting ticket to flush sqs batch with flush interval as: ", caduceusOutboundSender.flushInterval.Seconds())
+		// caduceusOutboundSender.sqsBatchTicker = time.NewTicker(caduceusOutboundSender.flushInterval)
 		// go func() {
 		// 	for range caduceusOutboundSender.sqsBatchTicker.C {
 		// 		caduceusOutboundSender.sqsBatchMutex.Lock()
