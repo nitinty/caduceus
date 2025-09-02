@@ -334,7 +334,6 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 
 	// Note: This method assumes the caller already holds the sqsBatchMutex
 	if len(obs.sqsBatch) == 0 {
-		fmt.Println("Batch size is 0, hence doing nothing")
 		return
 	}
 
