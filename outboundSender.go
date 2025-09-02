@@ -681,12 +681,11 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 
 		obs.sqsBatchMutex.Lock()
 		obs.sqsBatch = append(obs.sqsBatch, entry)
-		if len(obs.sqsBatch) >= 10 {
-			obs.sqsBatchMutex.Unlock()
-			level.Info(obs.logger).Log("Size of batch is: ", len(obs.sqsBatch))
+		shouldFlush := len(obs.sqsBatch) >= 10
+		obs.sqsBatchMutex.Unlock()
+
+		if shouldFlush {
 			obs.flushSqsBatch()
-		} else {
-			obs.sqsBatchMutex.Unlock()
 		}
 		return
 	} else {
