@@ -332,29 +332,37 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 	obs.sqsBatchMutex.Lock()
 	defer obs.sqsBatchMutex.Unlock()
 
-	// Note: This method assumes the caller already holds the sqsBatchMutex
 	if len(obs.sqsBatch) == 0 {
 		return
 	}
 
-	_, err := obs.sqsClient.SendMessageBatch(&sqs.SendMessageBatchInput{
-		QueueUrl: aws.String(obs.sqsQueueURL),
-		Entries:  obs.sqsBatch,
-	})
-	if err != nil {
-		fmt.Println("Error while sending SQS batch:", err)
-		for range obs.sqsBatch {
-			obs.failedSentMsgsCount.With("url", obs.id, "source", "sqsBatch").Add(1.0)
+	// process in chunks of 10
+	for i := 0; i < len(obs.sqsBatch); i += 10 {
+		end := i + 10
+		if end > len(obs.sqsBatch) {
+			end = len(obs.sqsBatch)
 		}
-		obs.sqsBatch = nil
-		return
+		batch := obs.sqsBatch[i:end]
+
+		_, err := obs.sqsClient.SendMessageBatch(&sqs.SendMessageBatchInput{
+			QueueUrl: aws.String(obs.sqsQueueURL),
+			Entries:  batch,
+		})
+		if err != nil {
+			fmt.Println("Error while sending SQS batch:", err)
+			for range batch {
+				obs.failedSentMsgsCount.With("url", obs.id, "source", "sqsBatch").Add(1.0)
+			}
+		} else {
+			fmt.Printf("Successfully sent SQS batch of %d messages\n", len(batch))
+			for range batch {
+				obs.sendMsgToSqsCounter.With("url", obs.id, "source", "sqsBatch").Add(1.0)
+			}
+		}
 	}
 
-	fmt.Printf("Successfully sent SQS batch of %d messages\n", len(obs.sqsBatch))
-	for range obs.sqsBatch {
-		obs.sendMsgToSqsCounter.With("url", obs.id, "source", "sqsBatch").Add(1.0)
-	}
-	obs.sqsBatch = nil
+	// reset slice but keep backing array to avoid churn
+	obs.sqsBatch = obs.sqsBatch[:0]
 }
 
 func (osf OutboundSenderFactory) getQueueName() string {
@@ -663,7 +671,6 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			return
 		}
 
-		obs.sqsBatchMutex.Lock()
 		entry := &sqs.SendMessageBatchRequestEntry{
 			Id:          aws.String(fmt.Sprintf("%d", time.Now().UnixNano())),
 			MessageBody: aws.String(string(msgBytes)),
@@ -672,14 +679,14 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			entry.MessageGroupId = aws.String(msg.Metadata["/hw-deviceid"])
 		}
 
+		obs.sqsBatchMutex.Lock()
 		obs.sqsBatch = append(obs.sqsBatch, entry)
-		shouldFlush := len(obs.sqsBatch) >= 10
-		obs.sqsBatchMutex.Unlock()
-
-		if shouldFlush {
-			fmt.Println("Size of batch is: ", len(obs.sqsBatch))
+		if len(obs.sqsBatch) >= 10 {
+			obs.sqsBatchMutex.Unlock()
 			level.Info(obs.logger).Log("Size of batch is: ", len(obs.sqsBatch))
 			obs.flushSqsBatch()
+		} else {
+			obs.sqsBatchMutex.Unlock()
 		}
 		return
 	} else {
