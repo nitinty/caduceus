@@ -761,7 +761,7 @@ Loop:
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
 				if err != nil {
-					obs.failedReceivedMsgsCount.With("url", obs.id, "source", msg.Source).Add(1.0)
+					obs.failedReceivedMsgsCount.With("url", obs.id, "source", "source").Add(1.0)
 					fmt.Printf("Error while consuming messages from AWS SQS: %v\n", err)
 					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while consuming messages from AWS SQS", logging.ErrorKey(), err)
 				} else {
@@ -782,7 +782,7 @@ Loop:
 
 				fmt.Println("Successfully received message from AWS SQS: ", msg)
 				level.Info(obs.logger).Log(logging.MessageKey(), "Successfully received message from AWS SQS", "sqs.message.id", sqsMsg.MessageId)
-				obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", msg.Source).Add(1.0)
+				obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", "source").Add(1.0)
 				obs.sendMessage(msg)
 
 				fmt.Println("Deleting message from queue: ", obs.sqsQueueURL)
@@ -791,7 +791,7 @@ Loop:
 					ReceiptHandle: sqsMsg.ReceiptHandle,
 				})
 				if err != nil {
-					obs.failedDeletedMessagesCount.With("url", obs.id, "source", msg.Source).Add(1.0)
+					obs.failedDeletedMessagesCount.With("url", obs.id, "source", "source").Add(1.0)
 					fmt.Printf("Error while deleting messages from AWS SQS: %v\n", err)
 					obs.logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Failed to delete AWS SQS message", logging.ErrorKey(), err)
 				}
