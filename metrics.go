@@ -30,7 +30,7 @@ const (
 	ReceivedMessageFromSqsCount       = "received_msg_from_sqs_count"
 	FailedSendToSqsMessagesCount      = "failed_send_to_sqs_msgs_count"
 	FailedReceiveFromSqsMessagesCount = "failed_receive_from_sqs_msgs_count"
-	FailedDeleteFromSqsMessagesCount  = "failed_delete_msgs_count"
+	FailedDeleteFromSqsMessagesCount  = "failed_delete_from_sqs_msgs_count"
 )
 
 const (
