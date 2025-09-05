@@ -6,31 +6,31 @@ import (
 )
 
 const (
-	ErrorRequestBodyCounter         = "error_request_body_count"
-	EmptyRequestBodyCounter         = "empty_request_body_count"
-	ModifiedWRPCounter              = "modified_wrp_count"
-	DeliveryCounter                 = "delivery_count"
-	DeliveryRetryCounter            = "delivery_retry_count"
-	DeliveryRetryMaxGauge           = "delivery_retry_max"
-	SlowConsumerDroppedMsgCounter   = "slow_consumer_dropped_message_count"
-	SlowConsumerCounter             = "slow_consumer_cut_off_count"
-	IncomingQueueDepth              = "incoming_queue_depth"
-	IncomingEventTypeCounter        = "incoming_event_type_count"
-	DropsDueToInvalidPayload        = "drops_due_to_invalid_payload"
-	OutgoingQueueDepth              = "outgoing_queue_depths"
-	DropsDueToPanic                 = "drops_due_to_panic"
-	ConsumerRenewalTimeGauge        = "consumer_renewal_time"
-	ConsumerDeliverUntilGauge       = "consumer_deliver_until"
-	ConsumerDropUntilGauge          = "consumer_drop_until"
-	ConsumerDeliveryWorkersGauge    = "consumer_delivery_workers"
-	ConsumerMaxDeliveryWorkersGauge = "consumer_delivery_workers_max"
-	QueryDurationHistogram          = "query_duration_histogram_seconds"
-	IncomingQueueLatencyHistogram   = "incoming_queue_latency_histogram_seconds"
-	MsgSendToSqsCount               = "msg_send_to_sqs_count"
-	ReceivedMessageFromSqsCount     = "received_msg_from_sqs_count"
-	FailedSentMessagesCount         = "failed_sent_msgs_count"
-	FailedReceivedMessagesCount     = "failed_received_msgs_count"
-	FailedDeletedMessagesCount      = "failed_deleted_msgs_count"
+	ErrorRequestBodyCounter           = "error_request_body_count"
+	EmptyRequestBodyCounter           = "empty_request_body_count"
+	ModifiedWRPCounter                = "modified_wrp_count"
+	DeliveryCounter                   = "delivery_count"
+	DeliveryRetryCounter              = "delivery_retry_count"
+	DeliveryRetryMaxGauge             = "delivery_retry_max"
+	SlowConsumerDroppedMsgCounter     = "slow_consumer_dropped_message_count"
+	SlowConsumerCounter               = "slow_consumer_cut_off_count"
+	IncomingQueueDepth                = "incoming_queue_depth"
+	IncomingEventTypeCounter          = "incoming_event_type_count"
+	DropsDueToInvalidPayload          = "drops_due_to_invalid_payload"
+	OutgoingQueueDepth                = "outgoing_queue_depths"
+	DropsDueToPanic                   = "drops_due_to_panic"
+	ConsumerRenewalTimeGauge          = "consumer_renewal_time"
+	ConsumerDeliverUntilGauge         = "consumer_deliver_until"
+	ConsumerDropUntilGauge            = "consumer_drop_until"
+	ConsumerDeliveryWorkersGauge      = "consumer_delivery_workers"
+	ConsumerMaxDeliveryWorkersGauge   = "consumer_delivery_workers_max"
+	QueryDurationHistogram            = "query_duration_histogram_seconds"
+	IncomingQueueLatencyHistogram     = "incoming_queue_latency_histogram_seconds"
+	MsgSendToSqsCount                 = "msg_send_to_sqs_count"
+	ReceivedMessageFromSqsCount       = "received_msg_from_sqs_count"
+	FailedSendToSqsMessagesCount      = "failed_send_to_sqs_msgs_count"
+	FailedReceiveFromSqsMessagesCount = "failed_receive_from_sqs_msgs_count"
+	FailedDeleteFromSqsMessagesCount  = "failed_delete_msgs_count"
 )
 
 const (
@@ -174,19 +174,19 @@ func Metrics() []xmetrics.Metric {
 			LabelNames: []string{"url", "source"},
 		},
 		{
-			Name:       FailedSentMessagesCount,
-			Help:       "Count of messages failed to sent to SQS",
+			Name:       FailedSendToSqsMessagesCount,
+			Help:       "Count of messages failed to send to SQS",
 			Type:       "counter",
 			LabelNames: []string{"url", "source"},
 		},
 		{
-			Name:       FailedReceivedMessagesCount,
+			Name:       FailedReceiveFromSqsMessagesCount,
 			Help:       "Count of messages failed to receive from SQS",
 			Type:       "counter",
 			LabelNames: []string{"url", "source"},
 		},
 		{
-			Name:       FailedDeletedMessagesCount,
+			Name:       FailedDeleteFromSqsMessagesCount,
 			Help:       "Count of messages failed to be deleted from SQS",
 			Type:       "counter",
 			LabelNames: []string{"url", "source"},
@@ -204,6 +204,9 @@ func CreateOutbounderMetrics(m CaduceusMetricsRegistry, c *CaduceusOutboundSende
 	c.droppedExpiredBeforeQueueCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "expired_before_queueing")
 	c.sendMsgToSqsCounter = m.NewCounter(MsgSendToSqsCount)
 	c.receivedMsgFromSqsCounter = m.NewCounter(ReceivedMessageFromSqsCount)
+	c.failedSendToSqsMsgsCount = m.NewCounter(FailedSendToSqsMessagesCount)
+	c.failedReceiveFromSqsMsgsCount = m.NewCounter(FailedReceiveFromSqsMessagesCount)
+	c.failedDeleteFromSqsMessagesCount = m.NewCounter(FailedDeleteFromSqsMessagesCount)
 
 	c.droppedCutoffCounter = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "cut_off")
 	c.droppedInvalidConfig = m.NewCounter(SlowConsumerDroppedMsgCounter).With("url", c.id, "reason", "invalid_config")

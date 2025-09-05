@@ -93,6 +93,7 @@ type SenderWrapperFactory struct {
 	// Only required if KmsEnabled is enabled. KmsKeyARN will identify the ARN which will be used for encryption in AWS SQS Queue.
 	KmsKeyARN string
 
+	// FlushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
 	FlushInterval time.Duration
 }
 

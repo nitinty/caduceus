@@ -71,7 +71,6 @@ type httpClientTimeout struct {
 // except for obtaining the command-line arguments (which are passed to it).
 func caduceus(arguments []string) int {
 	beginCaduceus := time.Now()
-	fmt.Println("Beginning of caduceus: ", beginCaduceus)
 
 	var (
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)

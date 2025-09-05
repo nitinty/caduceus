@@ -444,6 +444,7 @@ sender:
     # Only required if kmsEnabled is enabled. kmsKeyARN will identify the ARN which will be used for encryption in AWS SQS Queue.
     kmsKeyARN: ""
 
+    # flushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
     flushInterval: 10s
 
 # (Deprecated)

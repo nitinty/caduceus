@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync/atomic"
@@ -107,11 +106,8 @@ func (sh *ServerHandler) ServeHTTP(response http.ResponseWriter, request *http.R
 	decoder := wrp.NewDecoderBytes(payload, wrp.Msgpack)
 	msg := new(wrp.Message)
 
-	fmt.Println("This is the payload received for decoding: ", payload)
 	err = decoder.Decode(msg)
 	if err != nil || msg.MessageType() != 4 {
-		fmt.Println("This is the error in payload: ", err)
-		fmt.Println("This is the message: ", msg)
 		// return a 400
 		sh.invalidCount.Add(1.0)
 		response.WriteHeader(http.StatusBadRequest)
