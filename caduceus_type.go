@@ -70,10 +70,38 @@ type AwsSqs struct {
 }
 
 type Kafka struct {
-	KafkaEnabled bool
-	KafkaBrokers string
-	KafkaTopic   string
-	KafkaGroupID string
+	KafkaEnabled           bool
+	KafkaBrokers           string
+	KafkaTopic             string
+	KafkaGroupID           string
+	KafkaProducer          KafkaProducer
+	KafkaConsumer          KafkaConsumer
+	KafkaEnsureTopic       bool
+	KafkaNumPartitions     int
+	KafkaReplicationFactor int
+	KafkaAdminTimeoutMs    int
+}
+
+type KafkaProducer struct {
+	KafkaAcks                      string
+	KafkaCompression               string
+	KafkaLingerMs                  int
+	KafkaBatchNumMessages          int
+	KafkaQueueBufferingMaxKbytes   int
+	KafkaQueueBufferingMaxMessages int
+	KafkaEnableIdempotence         bool
+	KafkaMaxInFlight               int
+	KafkaDeliveryTimeoutMs         int
+}
+
+type KafkaConsumer struct {
+	KafkaConsumerFetchMinBytes           int
+	KafkaConsumerFetchWaitMaxMs          int
+	KafkaConsumerMaxPartitionFetchBytes  int
+	KafkaConsumerQueuedMinMessages       int
+	KafkaConsumerQueuedMaxMessagesKbytes int
+	KafkaConsumerEnableAutoCommit        bool
+	KafkaConsumerAutoCommitIntervalMs    int
 }
 
 type CaduceusMetricsRegistry interface {

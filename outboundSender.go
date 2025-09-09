@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"container/ring"
+	"context"
 	"crypto/hmac"
 	cr "crypto/rand"
 	"crypto/sha1"
@@ -145,13 +146,91 @@ type OutboundSenderFactory struct {
 	// FlushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
 	FlushInterval time.Duration
 
+	// Enable or disable Kafka integration
 	KafkaEnabled bool
 
+	// List of Kafka brokers (comma-separated if multiple)
 	KafkaBrokers string
 
+	// Kafka topic where messages will be published/consumed
 	KafkaTopic string
 
+	// Consumer group ID (all consumers with the same ID share the work)
 	KafkaGroupID string
+
+	// If true, the service will attempt to create the Kafka topic on startup
+	// using the AdminClient. If false, assumes the topic already exists.
+	KafkaEnsureTopic bool
+
+	// Number of partitions to create if KafkaEnsureTopic = true and the topic
+	// does not already exist. More partitions = more parallelism for consumers. Defauls to 1.
+	KafkaNumPartitions int
+
+	// Replication factor to use when creating the topic. Defauls to 1.
+	KafkaReplicationFactor int
+
+	// Timeout (in ms) for AdminClient operations like CreateTopics.
+	// If exceeded, topic creation fails with a timeout error.
+	KafkaAdminTimeoutMs int
+
+	// Acknowledgment policy for writes:
+	// "all" = safest (leader + replicas must ack),
+	// "1"   = only leader ack,
+	// "0"   = fire-and-forget (fastest, but may lose messages).
+	KafkaAcks string
+
+	// Compression type to use when sending messages.
+	// Options: "lz4", "zstd", "snappy", "gzip", "none".
+	KafkaCompression string
+
+	// How long (in ms) to wait before sending a batch, even if not full.
+	// Higher = more batching, better throughput, slightly more latency.
+	KafkaLingerMs int
+
+	// Max number of messages to include in a single batch.
+	// Higher = more throughput, more memory usage.
+	KafkaBatchNumMessages int
+
+	// Max in-memory buffer size for producer (in KB).
+	// Prevents blocking when Kafka is slow.
+	KafkaQueueBufferingMaxKbytes int
+
+	// Max number of messages that can be buffered in producer memory.
+	KafkaQueueBufferingMaxMessages int
+
+	// Enable exactly-once semantics (avoids duplicate writes on retries).
+	// Recommended for financial/critical workloads.
+	KafkaEnableIdempotence bool
+
+	// Max number of requests in-flight per connection.
+	// If idempotence=true, keep ≤5 to preserve ordering.
+	KafkaMaxInFlight int
+
+	// Max time (in ms) a message can wait for delivery before failing.
+	KafkaDeliveryTimeoutMs int
+
+	// Minimum amount of data (bytes) broker should return per fetch.
+	// Larger values improve throughput, smaller improves latency.
+	KafkaConsumerFetchMinBytes int
+
+	// Max wait time (in ms) for broker to accumulate fetch.min.bytes.
+	KafkaConsumerFetchWaitMaxMs int
+
+	// Max data per partition (bytes) consumer will fetch in one request.
+	KafkaConsumerMaxPartitionFetchBytes int
+
+	// Minimum number of messages to keep queued locally in consumer memory.
+	KafkaConsumerQueuedMinMessages int
+
+	// Max memory (KB) for consumer's local prefetch buffer.
+	KafkaConsumerQueuedMaxMessagesKbytes int
+
+	// If true, Kafka automatically commits offsets back to broker.
+	// If false, app must commit manually.
+	KafkaConsumerEnableAutoCommit bool
+
+	// How often (in ms) to commit offsets when auto-commit is enabled.
+	KafkaConsumerAutoCommitIntervalMs int
 }
 
 type OutboundSender interface {
@@ -323,26 +402,93 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka Enabled with brokers:", osf.KafkaBrokers)
 
 		// Producer
-		producer, err := kafka.NewProducer(&kafka.ConfigMap{
-			"bootstrap.servers": osf.KafkaBrokers,
-		})
+		producerConfig := osf.getProducerConfig()
+		producer, err := kafka.NewProducer(producerConfig)
 		if err != nil {
 			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create Kafka producer:", err.Error())
 			return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
 		}
+		fmt.Println("Successfully created producer")
+		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created producer")
+
+		// Create Kafka topic / skip if already exists
+		if osf.KafkaEnsureTopic {
+			numParts := osf.KafkaNumPartitions
+			if numParts <= 0 {
+				numParts = 1
+			}
+			repl := osf.KafkaReplicationFactor
+			if repl <= 0 {
+				repl = 1
+			}
+
+			admin, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": osf.KafkaBrokers})
+			if err != nil {
+				fmt.Println("Kafka AdminClient failed (topic ensure skipped): ", err.Error())
+				level.Info(caduceusOutboundSender.logger).Log(
+					logging.MessageKey(), "Kafka AdminClient failed (topic ensure skipped):", err.Error(),
+				)
+				return nil, err
+			}
+			defer admin.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(osf.KafkaAdminTimeoutMs)*time.Millisecond)
+			if osf.KafkaAdminTimeoutMs <= 0 {
+				cancel()
+				ctx = context.Background()
+			} else {
+				defer cancel()
+			}
+
+			result, err := admin.CreateTopics(ctx, []kafka.TopicSpecification{{
+				Topic:             osf.KafkaTopic,
+				NumPartitions:     numParts,
+				ReplicationFactor: repl,
+			}})
+
+			if err != nil {
+				fmt.Println("Failed to create Kafka topic ", err.Error())
+				level.Info(caduceusOutboundSender.logger).Log(
+					logging.MessageKey(), "Failed to create Kafka topic", err.Error(),
+				)
+				return nil, err
+			}
+
+			// Inspect result for per-topic errors
+			for _, res := range result {
+				if res.Error.Code() == kafka.ErrTopicAlreadyExists {
+					fmt.Println("Kafka topic already exists: ", res.Topic)
+					level.Info(caduceusOutboundSender.logger).Log(
+						logging.MessageKey(), "Kafka topic already exists:", res.Topic,
+					)
+				} else if res.Error.Code() != kafka.ErrNoError {
+					fmt.Println("Kafka topic creation failed: ", res.Error)
+					level.Info(caduceusOutboundSender.logger).Log(
+						logging.MessageKey(), "Kafka topic creation failed:", res.Error,
+					)
+				} else {
+					fmt.Println("Kafka topic created successfully: ", res.Topic)
+					level.Info(caduceusOutboundSender.logger).Log(
+						logging.MessageKey(), "Kafka topic created successfully:", res.Topic,
+					)
+				}
+			}
+		}
 
 		// Consumer
-		consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-			"bootstrap.servers": osf.KafkaBrokers,
-			"group.id":          osf.KafkaGroupID,
-			"auto.offset.reset": "earliest",
-		})
+		consumerConfig := osf.getConsumerConfig()
+		consumer, err := kafka.NewConsumer(consumerConfig)
 		if err != nil {
 			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create Kafka consumer:", err.Error())
 			return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
 		}
+		fmt.Println("Successfully created consumer")
+		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created consumer")
 
-		consumer.Subscribe(osf.KafkaTopic, nil)
+		if err := consumer.Subscribe(osf.KafkaTopic, nil); err != nil {
+			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka subscribe failed:", err.Error())
+			return nil, fmt.Errorf("failed to subscribe: %w", err)
+		}
 
 		caduceusOutboundSender.kafkaProducer = producer
 		caduceusOutboundSender.kafkaConsumer = consumer
@@ -371,6 +517,99 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 	obs = caduceusOutboundSender
 
 	return
+}
+
+func (osf OutboundSenderFactory) getConsumerConfig() *kafka.ConfigMap {
+	// Defaults if not provided
+	fetchMin := osf.KafkaConsumerFetchMinBytes
+	if fetchMin <= 0 {
+		fetchMin = 5242880
+	}
+	fetchWait := osf.KafkaConsumerFetchWaitMaxMs
+	if fetchWait <= 0 {
+		fetchWait = 50
+	}
+	maxPartFetch := osf.KafkaConsumerMaxPartitionFetchBytes
+	if maxPartFetch <= 0 {
+		maxPartFetch = 16777216
+	}
+	qMin := osf.KafkaConsumerQueuedMinMessages
+	if qMin <= 0 {
+		qMin = 100000
+	}
+	qMaxKB := osf.KafkaConsumerQueuedMaxMessagesKbytes
+	if qMaxKB <= 0 {
+		qMaxKB = 2097151
+	}
+	autoCommitInt := osf.KafkaConsumerAutoCommitIntervalMs
+	if autoCommitInt <= 0 {
+		autoCommitInt = 100
+	}
+
+	consumerConfig := &kafka.ConfigMap{
+		"bootstrap.servers":          osf.KafkaBrokers,
+		"group.id":                   osf.KafkaGroupID,
+		"auto.offset.reset":          "earliest",
+		"enable.auto.commit":         osf.KafkaConsumerEnableAutoCommit,
+		"auto.commit.interval.ms":    autoCommitInt,
+		"fetch.min.bytes":            fetchMin,
+		"fetch.wait.max.ms":          fetchWait,
+		"max.partition.fetch.bytes":  maxPartFetch,
+		"queued.min.messages":        qMin,
+		"queued.max.messages.kbytes": qMaxKB,
+		"go.events.channel.enable":   true,
+	}
+	return consumerConfig
+}
+
+func (osf OutboundSenderFactory) getProducerConfig() *kafka.ConfigMap {
+	// Defaults if not provided
+	acks := osf.KafkaAcks
+	if acks == "" {
+		acks = "all"
+	}
+	compression := osf.KafkaCompression
+	if compression == "" {
+		compression = "lz4"
+	}
+	linger := osf.KafkaLingerMs
+	if linger <= 0 {
+		linger = 10
+	}
+	batchNum := osf.KafkaBatchNumMessages
+	if batchNum <= 0 {
+		batchNum = 10000
+	}
+	qKbytes := osf.KafkaQueueBufferingMaxKbytes
+	if qKbytes <= 0 {
+		qKbytes = 1048576
+	} // 1GB
+	qMsgs := osf.KafkaQueueBufferingMaxMessages
+	if qMsgs <= 0 {
+		qMsgs = 1000000
+	}
+	maxInflight := osf.KafkaMaxInFlight
+	if maxInflight <= 0 {
+		maxInflight = 5
+	}
+	dTimeout := osf.KafkaDeliveryTimeoutMs
+	if dTimeout <= 0 {
+		dTimeout = 120000
+	}
+
+	producerConfig := &kafka.ConfigMap{
+		"bootstrap.servers":                     osf.KafkaBrokers,
+		"acks":                                  acks,
+		"compression.type":                      compression,
+		"queue.buffering.max.ms":                linger,
+		"batch.num.messages":                    batchNum,
+		"queue.buffering.max.kbytes":            qKbytes,
+		"queue.buffering.max.messages":          qMsgs,
+		"enable.idempotence":                    osf.KafkaEnableIdempotence,
+		"max.in.flight.requests.per.connection": maxInflight,
+		"delivery.timeout.ms":                   dTimeout,
+	}
+	return producerConfig
 }
 
 func (obs *CaduceusOutboundSender) flushSqsBatch() {
@@ -750,10 +989,21 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			return
 		}
 
+		var key []byte
+		messageGroupId := msg.Metadata["/hw-deviceid"]
+		if len(messageGroupId) == 0 {
+			messageGroupId = msg.Metadata["hw-mac"]
+		}
+		if len(messageGroupId) > 0 {
+			key = []byte(messageGroupId)
+		}
+
 		err = obs.kafkaProducer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &obs.kafkaTopic, Partition: kafka.PartitionAny},
+			Key:            key,
 			Value:          msgBytes,
 		}, nil)
+
 		if err != nil {
 			fmt.Println("Failed to produce Kafka message:", err)
 			level.Info(obs.logger).Log(logging.MessageKey(), "Failed to produce Kafka message: "+err.Error())
@@ -864,32 +1114,34 @@ Loop:
 				level.Info(obs.logger).Log(logging.MessageKey(), "Message deleted from AWS Sqs having message Id: ", sqsMsg.MessageId)
 			}
 		} else if obs.kafkaConsumer != nil {
-			kafkaMsg, err := obs.kafkaConsumer.ReadMessage(500 * time.Millisecond)
-			if err != nil {
-				if ke, ok := err.(kafka.Error); ok {
-					if ke.Code() == kafka.ErrTimedOut {
-						// benign timeout, try again
+			for e := range obs.kafkaConsumer.Events() {
+				switch ev := e.(type) {
+				case *kafka.Message:
+					// Deserialize into wrp.Message
+					msg = &wrp.Message{}
+					if err := json.Unmarshal(ev.Value, msg); err != nil {
+						fmt.Println("Failed to unmarshal Kafka message:", err)
+						level.Info(obs.logger).Log(logging.MessageKey(), "Failed to unmarshal Kafka message:", err.Error())
 						continue
 					}
-					fmt.Printf("Kafka consumer error: %v\n", ke)
-					level.Info(obs.logger).Log(logging.MessageKey(), "Kafka consumer error:", ke)
-					continue
+
+					fmt.Println("Received Kafka message:", msg)
+					level.Info(obs.logger).Log(logging.MessageKey(), "Received Kafka message:", msg)
+					obs.sendMessage(msg) // already uses worker semaphore
+
+				case kafka.Error:
+					// librdkafka handles retries internally; we just log
+					if ev.Code() == kafka.ErrTimedOut {
+						// benign timeout, just ignore
+						continue
+					}
+					fmt.Printf("Kafka consumer error: %v\n", ev)
+					level.Info(obs.logger).Log(logging.MessageKey(), "Kafka consumer error:", ev.Error())
+
+				default:
+					// ignore stats, EOF, rebalance events etc. for performance
 				}
-				fmt.Printf("Kafka consumer unexpected error: %v\n", err)
-				level.Info(obs.logger).Log(logging.MessageKey(), "Kafka consumer unexpected error:", err.Error())
-				continue
 			}
-
-			msg = &wrp.Message{}
-			if err := json.Unmarshal(kafkaMsg.Value, msg); err != nil {
-				fmt.Println("Failed to unmarshal Kafka message:", err)
-				level.Info(obs.logger).Log(logging.MessageKey(), "Failed to unmarshal Kafka message:", err.Error())
-				continue
-			}
-
-			fmt.Println("Received Kafka message:", msg)
-			level.Info(obs.logger).Log(logging.MessageKey(), "Received Kafka message:", msg)
-			obs.sendMessage(msg)
 		} else {
 			// Always pull a new queue in case we have been cutoff or are shutting
 			// down.
