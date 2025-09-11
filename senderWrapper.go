@@ -95,6 +95,9 @@ type SenderWrapperFactory struct {
 
 	// FlushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
 	FlushInterval time.Duration
+
+	// The duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+	WaitTimeSeconds int64
 }
 
 type SenderWrapper interface {
@@ -131,6 +134,7 @@ type CaduceusSenderWrapper struct {
 	kmsEnabled          bool
 	kmsKeyARN           string
 	flushInterval       time.Duration
+	waitTimeSeconds     int64
 }
 
 // New produces a new SenderWrapper implemented by CaduceusSenderWrapper
@@ -157,6 +161,7 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 		kmsEnabled:          swf.KmsEnabled,
 		kmsKeyARN:           swf.KmsKeyARN,
 		flushInterval:       swf.FlushInterval,
+		waitTimeSeconds:     swf.WaitTimeSeconds,
 	}
 
 	if swf.Linger <= 0 {
@@ -204,6 +209,7 @@ func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 		KmsEnabled:        sw.kmsEnabled,
 		KmsKeyARN:         sw.kmsKeyARN,
 		FlushInterval:     sw.flushInterval,
+		WaitTimeSeconds:   sw.waitTimeSeconds,
 	}
 
 	ids := make([]struct {

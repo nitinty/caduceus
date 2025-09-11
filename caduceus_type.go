@@ -66,6 +66,7 @@ type AwsSqs struct {
 	KmsEnabled      bool
 	KmsKeyARN       string
 	FlushInterval   time.Duration
+	WaitTimeSeconds int64
 }
 
 type CaduceusMetricsRegistry interface {

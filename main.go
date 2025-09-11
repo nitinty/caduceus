@@ -148,6 +148,7 @@ func caduceus(arguments []string) int {
 		KmsEnabled:        caduceusConfig.Sender.AwsSqs.KmsEnabled,
 		KmsKeyARN:         caduceusConfig.Sender.AwsSqs.KmsKeyARN,
 		FlushInterval:     caduceusConfig.Sender.AwsSqs.FlushInterval,
+		WaitTimeSeconds:   caduceusConfig.Sender.AwsSqs.WaitTimeSeconds,
 	}.New()
 
 	if err != nil {

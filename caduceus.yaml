@@ -447,6 +447,9 @@ sender:
     # flushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
     flushInterval: 10s
 
+    # The duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+    waitTimeSeconds: 5
+
 # (Deprecated)
 # profilerFrequency: 15
 # profilerDuration: 15

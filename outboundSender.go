@@ -143,6 +143,9 @@ type OutboundSenderFactory struct {
 
 	// FlushInterval defines how often messages accumulated in memory will be batched and sent to AWS SQS.
 	FlushInterval time.Duration
+
+	// The duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+	WaitTimeSeconds int64
 }
 
 type OutboundSender interface {
@@ -205,6 +208,7 @@ type CaduceusOutboundSender struct {
 	sqsBatchMutex                    sync.Mutex
 	sqsBatchTicker                   *time.Ticker
 	flushInterval                    time.Duration
+	waitTimeSeconds                  int64
 }
 
 // New creates a new OutboundSender object from the factory, or returns an error.
@@ -290,6 +294,12 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		caduceusOutboundSender.fifoBasedQueue = osf.FifoBasedQueue
 		if err != nil {
 			return nil, err
+		}
+
+		if osf.WaitTimeSeconds <= 0 {
+			caduceusOutboundSender.waitTimeSeconds = 5
+		} else {
+			caduceusOutboundSender.waitTimeSeconds = osf.WaitTimeSeconds
 		}
 
 		if osf.FlushInterval <= 0 {
@@ -763,7 +773,7 @@ Loop:
 			consumedMessage, err := obs.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(obs.sqsQueueURL),
 				MaxNumberOfMessages: aws.Int64(10),
-				WaitTimeSeconds:     aws.Int64(10),
+				WaitTimeSeconds:     aws.Int64(obs.waitTimeSeconds),
 			})
 			if err != nil || len(consumedMessage.Messages) == 0 {
 				if err != nil {
