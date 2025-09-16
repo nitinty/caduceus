@@ -272,7 +272,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 		var awsConfig *aws.Config
 		if osf.RoleBasedAccess {
-			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Role Based Access is Enabled with aws region: ", awsRegion)
+			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Role Based Access is Enabled with aws region: "+awsRegion)
 			awsConfig = &aws.Config{
 				Region: aws.String(awsRegion),
 			}
@@ -308,7 +308,8 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 			caduceusOutboundSender.flushInterval = osf.FlushInterval
 		}
 
-		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Starting ticker to flush sqs batch with flush interval: ", caduceusOutboundSender.flushInterval.Seconds())
+		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Starting ticker to flush sqs batch with flush interval: "+
+			strconv.FormatFloat(caduceusOutboundSender.flushInterval.Seconds(), 'f', 2, 64))
 		caduceusOutboundSender.sqsBatchTicker = time.NewTicker(caduceusOutboundSender.flushInterval)
 		go func() {
 			for range caduceusOutboundSender.sqsBatchTicker.C {
@@ -362,12 +363,12 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 			Entries:  batch,
 		})
 		if err != nil {
-			level.Info(obs.logger).Log(logging.MessageKey(), "failed to send Sqs batch: ", err.Error())
+			level.Info(obs.logger).Log(logging.MessageKey(), "failed to send Sqs batch: "+err.Error())
 			for range batch {
 				obs.failedSendToSqsMsgsCount.With("url", obs.id, "source", "sqsBatch").Add(1.0)
 			}
 		} else {
-			level.Info(obs.logger).Log(logging.MessageKey(), "Successfully sent Sqs batch having size: ", len(batch))
+			level.Info(obs.logger).Log(logging.MessageKey(), "Successfully sent Sqs batch having size: "+strconv.Itoa(len(batch)))
 			for range batch {
 				obs.sendMsgToSqsCounter.With("url", obs.id, "source", "sqsBatch").Add(1.0)
 			}
@@ -382,7 +383,7 @@ func (osf OutboundSenderFactory) getQueueName() string {
 	if osf.FifoBasedQueue && !strings.HasSuffix(queueName, ".fifo") {
 		queueName += ".fifo"
 	}
-	level.Info(osf.Logger).Log(logging.MessageKey(), "AWS Sqs queue name: ", queueName)
+	level.Info(osf.Logger).Log(logging.MessageKey(), "AWS Sqs queue name: "+queueName)
 	return queueName
 }
 
@@ -394,7 +395,7 @@ func (osf OutboundSenderFactory) initializeQueue(sqsClient *sqs.SQS) (string, er
 	})
 
 	if err == nil {
-		level.Info(osf.Logger).Log(logging.MessageKey(), "Queue already exists in AWS Sqs: ", *getQueueOutput.QueueUrl)
+		level.Info(osf.Logger).Log(logging.MessageKey(), "Queue already exists in AWS Sqs: "+*getQueueOutput.QueueUrl)
 		return *getQueueOutput.QueueUrl, nil
 	}
 
@@ -423,15 +424,15 @@ func (osf OutboundSenderFactory) initializeQueue(sqsClient *sqs.SQS) (string, er
 			}(),
 		})
 		if err != nil {
-			level.Info(osf.Logger).Log(logging.MessageKey(), "failed to create queue in AWS Sqs: ", err.Error())
+			level.Info(osf.Logger).Log(logging.MessageKey(), "failed to create queue in AWS Sqs: "+err.Error())
 			return "", fmt.Errorf("failed to create queue: %w", err)
 		}
 
-		level.Info(osf.Logger).Log(logging.MessageKey(), "Successfully created queue: ", *createQueueOutput.QueueUrl)
+		level.Info(osf.Logger).Log(logging.MessageKey(), "Successfully created queue: "+*createQueueOutput.QueueUrl)
 		return *createQueueOutput.QueueUrl, nil
 	}
 
-	level.Info(osf.Logger).Log(logging.MessageKey(), "failed to get queue URL from AWS SQS: ", err.Error())
+	level.Info(osf.Logger).Log(logging.MessageKey(), "failed to get queue URL from AWS SQS: "+err.Error())
 	return "", fmt.Errorf("failed to get queue URL from AWS SQS: %w", err)
 }
 
@@ -793,7 +794,7 @@ Loop:
 					continue
 				}
 
-				level.Info(obs.logger).Log(logging.MessageKey(), "Received message from AWS Sqs having message Id: ", sqsMsg.MessageId)
+				level.Info(obs.logger).Log(logging.MessageKey(), "Received message from AWS Sqs having message Id: "+*sqsMsg.MessageId)
 				obs.receivedMsgFromSqsCounter.With("url", obs.id, "source", "sqsBatch").Add(1.0)
 				obs.sendMessage(msg)
 
@@ -802,10 +803,10 @@ Loop:
 					ReceiptHandle: sqsMsg.ReceiptHandle,
 				})
 				if err != nil {
-					level.Info(obs.logger).Log(logging.MessageKey(), "Failed to delete AWS Sqs message: ", err.Error())
+					level.Info(obs.logger).Log(logging.MessageKey(), "Failed to delete AWS Sqs message: "+err.Error())
 					obs.failedDeleteFromSqsMessagesCount.With("url", obs.id, "source", "sqsBatch").Add(1.0)
 				}
-				level.Info(obs.logger).Log(logging.MessageKey(), "Message deleted from AWS Sqs having message Id: ", sqsMsg.MessageId)
+				level.Info(obs.logger).Log(logging.MessageKey(), "Message deleted from AWS Sqs having message Id: "+*sqsMsg.MessageId)
 			}
 		} else {
 			// Always pull a new queue in case we have been cutoff or are shutting
