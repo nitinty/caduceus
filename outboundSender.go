@@ -605,7 +605,7 @@ func (osf OutboundSenderFactory) getProducerConfig() *kafka.ConfigMap {
 		"bootstrap.servers":                     osf.KafkaBrokers,
 		"acks":                                  acks,
 		"compression.type":                      compression,
-		"queue.buffering.max.ms":                linger,
+		"linger.ms":                             linger,
 		"batch.num.messages":                    batchNum,
 		"queue.buffering.max.kbytes":            qKbytes,
 		"queue.buffering.max.messages":          qMsgs,
