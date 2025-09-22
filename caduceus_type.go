@@ -51,6 +51,8 @@ type SenderConfig struct {
 	IdleConnTimeout                 time.Duration
 	DeliveryRetries                 int
 	DeliveryInterval                time.Duration
+	DeliveryRetryCodeSet            []int
+	RetryRotateURL                  bool
 	CustomPIDs                      []string
 	DisablePartnerIDs               bool
 	AwsSqs                          AwsSqs
@@ -67,6 +69,7 @@ type AwsSqs struct {
 	KmsEnabled      bool
 	KmsKeyARN       string
 	FlushInterval   time.Duration
+	WaitTimeSeconds int64
 }
 
 type Kafka struct {

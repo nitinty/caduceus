@@ -399,11 +399,17 @@ sender:
 
   # deliveryRetries is the maximum number of delivery attempts caduceus will
   # make before dropping an event
-  deliveryRetries: 1
+  deliveryRetries: 3
 
   # deliveryInterval is the time to wait after a failed delivery attempt
   # before attempting to deliver again
   deliveryInterval: 10ms
+
+  # Set of retry code in case of delivery retry failure
+  deliveryRetryCodeSet: [0, 400, 500]
+
+  # Whether to rotate through the list of URLs on each retry attempt.
+  retryRotateURL: false
 
   # responseHeaderTimeout is the time to wait for a response before giving up
   # and marking the delivery a failure
@@ -534,6 +540,9 @@ sender:
 
       # If auto-commit is enabled, how often (ms) to commit offsets.
       kafkaConsumerAutoCommitIntervalMs: 100
+
+    # The duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+    waitTimeSeconds: 5
 
 # (Deprecated)
 # profilerFrequency: 15
