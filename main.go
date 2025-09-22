@@ -124,15 +124,21 @@ func caduceus(arguments []string) int {
 		otelhttp.WithTracerProvider(tracing.TracerProvider()),
 	)
 
+	retryCodeSet := make(map[int]struct{}, len(caduceusConfig.Sender.DeliveryRetryCodeSet))
+	for _, c := range caduceusConfig.Sender.DeliveryRetryCodeSet {
+		retryCodeSet[c] = struct{}{}
+	}
 	caduceusSenderWrapper, err := SenderWrapperFactory{
-		NumWorkersPerSender: caduceusConfig.Sender.NumWorkersPerSender,
-		QueueSizePerSender:  caduceusConfig.Sender.QueueSizePerSender,
-		CutOffPeriod:        caduceusConfig.Sender.CutOffPeriod,
-		Linger:              caduceusConfig.Sender.Linger,
-		DeliveryRetries:     caduceusConfig.Sender.DeliveryRetries,
-		DeliveryInterval:    caduceusConfig.Sender.DeliveryInterval,
-		MetricsRegistry:     metricsRegistry,
-		Logger:              logger,
+		NumWorkersPerSender:  caduceusConfig.Sender.NumWorkersPerSender,
+		QueueSizePerSender:   caduceusConfig.Sender.QueueSizePerSender,
+		CutOffPeriod:         caduceusConfig.Sender.CutOffPeriod,
+		Linger:               caduceusConfig.Sender.Linger,
+		DeliveryRetries:      caduceusConfig.Sender.DeliveryRetries,
+		DeliveryInterval:     caduceusConfig.Sender.DeliveryInterval,
+		DeliveryRetryCodeSet: retryCodeSet,
+		RetryRotateURL:       caduceusConfig.Sender.RetryRotateURL,
+		MetricsRegistry:      metricsRegistry,
+		Logger:               logger,
 		Sender: doerFunc((&http.Client{
 			Transport: tr,
 			Timeout:   caduceusConfig.Sender.ClientTimeout,
