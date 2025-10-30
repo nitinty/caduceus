@@ -30,10 +30,13 @@ check:
 	golangci-lint run -n | tee errors.txt
 
 build:
-	CGO_ENABLED=1 $(GO) build $(GOBUILDFLAGS)
+	CGO_ENABLED=0 $(GO) build $(GOBUILDFLAGS)
 
 release: build
 	upx $(APP)
+
+build-musl:
+	CGO_ENABLED=1 $(GO) build -tags musl -ldflags="-w -s" -o $(APP)
 
 docker:
 	-$(DOCKER) rmi "$(DOCKER_ORG)/$(APP):$(VERSION)"
