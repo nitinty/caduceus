@@ -501,22 +501,22 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 		}
 
 		// Consumer
-		consumerConfig := osf.getConsumerConfig()
-		consumer, err := kafka.NewConsumer(consumerConfig)
-		if err != nil {
-			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create Kafka consumer:", err.Error())
-			return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
-		}
-		fmt.Println("Successfully created consumer")
-		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created consumer")
+		// consumerConfig := osf.getConsumerConfig()
+		// consumer, err := kafka.NewConsumer(consumerConfig)
+		// if err != nil {
+		// 	level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create Kafka consumer:", err.Error())
+		// 	return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
+		// }
+		// fmt.Println("Successfully created consumer")
+		// level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created consumer")
 
-		if err := consumer.Subscribe(osf.KafkaTopic, nil); err != nil {
-			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka subscribe failed:", err.Error())
-			return nil, fmt.Errorf("failed to subscribe: %w", err)
-		}
+		// if err := consumer.Subscribe(osf.KafkaTopic, nil); err != nil {
+		// 	level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka subscribe failed:", err.Error())
+		// 	return nil, fmt.Errorf("failed to subscribe: %w", err)
+		// }
 
 		caduceusOutboundSender.kafkaProducer = producer
-		caduceusOutboundSender.kafkaConsumer = consumer
+		// caduceusOutboundSender.kafkaConsumer = consumer
 		caduceusOutboundSender.kafkaTopic = osf.KafkaTopic
 	}
 
@@ -1141,36 +1141,36 @@ Loop:
 				level.Info(obs.logger).Log(logging.MessageKey(), "Message deleted from AWS Sqs having message Id: "+*sqsMsg.MessageId)
 			}
 		} else if obs.kafkaConsumer != nil {
-			// for e := range obs.kafkaConsumer.Events() {
-			// 	switch ev := e.(type) {
-			// 	case *kafka.Message:
-			// 		// Deserialize into wrp.Message
-			// 		msg = &wrp.Message{}
-			// 		if err := json.Unmarshal(ev.Value, msg); err != nil {
-			// 			fmt.Println("Failed to unmarshal Kafka message:", err)
-			// 			level.Info(obs.logger).Log(logging.MessageKey(), "Failed to unmarshal Kafka message:", err.Error())
-			// 			continue
-			// 		}
+			for e := range obs.kafkaConsumer.Events() {
+				switch ev := e.(type) {
+				case *kafka.Message:
+					// Deserialize into wrp.Message
+					msg = &wrp.Message{}
+					if err := json.Unmarshal(ev.Value, msg); err != nil {
+						fmt.Println("Failed to unmarshal Kafka message:", err)
+						level.Info(obs.logger).Log(logging.MessageKey(), "Failed to unmarshal Kafka message:", err.Error())
+						continue
+					}
 
-			// 		obs.receivedMsgFromKafkaCounter.With("url", obs.id, "source", "kafka").Add(1.0)
-			// 		fmt.Println("Received Kafka message:", msg)
-			// 		level.Info(obs.logger).Log(logging.MessageKey(), "Received Kafka message:", msg)
-			// 		obs.sendMessage(msg) // already uses worker semaphore
+					obs.receivedMsgFromKafkaCounter.With("url", obs.id, "source", "kafka").Add(1.0)
+					fmt.Println("Received Kafka message:", msg)
+					level.Info(obs.logger).Log(logging.MessageKey(), "Received Kafka message:", msg)
+					obs.sendMessage(msg) // already uses worker semaphore
 
-			// 	case kafka.Error:
-			// 		// librdkafka handles retries internally; we just log
-			// 		if ev.Code() == kafka.ErrTimedOut {
-			// 			// benign timeout, just ignore
-			// 			continue
-			// 		}
-			// 		obs.failedReceiveFromKafkaMsgsCount.With("url", obs.id, "source", "kafka").Add(1.0)
-			// 		fmt.Printf("Kafka consumer error: %v\n", ev)
-			// 		level.Info(obs.logger).Log(logging.MessageKey(), "Kafka consumer error:", ev.Error())
+				case kafka.Error:
+					// librdkafka handles retries internally; we just log
+					if ev.Code() == kafka.ErrTimedOut {
+						// benign timeout, just ignore
+						continue
+					}
+					obs.failedReceiveFromKafkaMsgsCount.With("url", obs.id, "source", "kafka").Add(1.0)
+					fmt.Printf("Kafka consumer error: %v\n", ev)
+					level.Info(obs.logger).Log(logging.MessageKey(), "Kafka consumer error:", ev.Error())
 
-			// 	default:
-			// 		// ignore stats, EOF, rebalance events etc. for performance
-			// 	}
-			// }
+				default:
+					// ignore stats, EOF, rebalance events etc. for performance
+				}
+			}
 		} else {
 			// Always pull a new queue in case we have been cutoff or are shutting
 			// down.
