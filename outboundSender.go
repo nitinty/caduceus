@@ -447,13 +447,13 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 		client, err := kgo.NewClient(allOpts...)
 		if err != nil {
-			fmt.Println("failed to create franz-go producer: ", err)
-			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create franz-go producer:", err.Error())
-			return nil, fmt.Errorf("failed to create franz-go producer: %w", err)
+			fmt.Println("failed to create franz-go client: ", err)
+			level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "failed to create franz-go client:", err.Error())
+			return nil, fmt.Errorf("failed to create franz-go client: %w", err)
 		}
 
-		fmt.Println("Successfully created franz-go producer")
-		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created franz-go producer")
+		fmt.Println("Successfully created franz-go client")
+		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Successfully created franz-go client")
 
 		caduceusOutboundSender.kafkaClient = client
 		caduceusOutboundSender.kafkaTopic = osf.KafkaTopic
