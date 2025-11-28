@@ -492,32 +492,6 @@ sender:
       # Options: lz4, zstd, snappy, gzip, none
       kafkaCompression: lz4
 
-      # How long (ms) to wait before sending a batch of messages, even if not full.
-      # Larger = more batching = higher throughput, but adds latency.
-      kafkaLingerMs: 10
-
-      # Max number of messages per batch.
-      # Larger = better throughput, more memory usage.
-      kafkaBatchNumMessages: 10000
-
-      # Max producer buffer size in KB (in-memory buffer inside your service).
-      # Prevents blocking if Kafka is slow.
-      kafkaQueueBufferingMaxKbytes: 1048576   # 1 GB
-
-      # Max number of messages the producer can buffer in memory.
-      kafkaQueueBufferingMaxMessages: 1000000
-
-      # Enable exactly-once semantics (avoid duplicate writes on retries).
-      # Recommended for financial/critical systems.
-      kafkaEnableIdempotence: true
-
-      # Max requests in-flight per connection.
-      # If idempotence=true, keep ≤5 to preserve ordering.
-      kafkaMaxInFlight: 5
-
-      # Max time (ms) before giving up on a delivery attempt.
-      kafkaDeliveryTimeoutMs: 120000   # 2 minutes
-
     kafkaConsumer:
       # Minimum amount of data (bytes) the broker should return per fetch.
       # Larger values improve throughput but may add latency.

@@ -45,7 +45,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
@@ -167,22 +166,7 @@ type OutboundSenderFactory struct {
 	KafkaTopic string
 
 	// Consumer group ID (all consumers with the same ID share the work)
-	KafkaGroupID string
-
-	// If true, the service will attempt to create the Kafka topic on startup
-	// using the AdminClient. If false, assumes the topic already exists.
-	KafkaEnsureTopic bool
-
-	// Number of partitions to create if KafkaEnsureTopic = true and the topic
-	// does not already exist. More partitions = more parallelism for consumers. Defauls to 1.
-	KafkaNumPartitions int
-
-	// Replication factor to use when creating the topic. Defauls to 1.
-	KafkaReplicationFactor int
-
-	// Timeout (in ms) for AdminClient operations like CreateTopics.
-	// If exceeded, topic creation fails with a timeout error.
-	KafkaAdminTimeoutMs int
+	KafkaConsumerGroupID string
 
 	// Acknowledgment policy for writes:
 	// "all" = safest (leader + replicas must ack),
@@ -193,55 +177,6 @@ type OutboundSenderFactory struct {
 	// Compression type to use when sending messages.
 	// Options: "lz4", "zstd", "snappy", "gzip", "none".
 	KafkaCompression string
-
-	// How long (in ms) to wait before sending a batch, even if not full.
-	// Higher = more batching, better throughput, slightly more latency.
-	KafkaLingerMs int
-
-	// Max number of messages to include in a single batch.
-	// Higher = more throughput, more memory usage.
-	KafkaBatchNumMessages int
-
-	// Max in-memory buffer size for producer (in KB).
-	// Prevents blocking when Kafka is slow.
-	KafkaQueueBufferingMaxKbytes int
-
-	// Max number of messages that can be buffered in producer memory.
-	KafkaQueueBufferingMaxMessages int
-
-	// Enable exactly-once semantics (avoids duplicate writes on retries).
-	// Recommended for financial/critical workloads.
-	KafkaEnableIdempotence bool
-
-	// Max number of requests in-flight per connection.
-	// If idempotence=true, keep ≤5 to preserve ordering.
-	KafkaMaxInFlight int
-
-	// Max time (in ms) a message can wait for delivery before failing.
-	KafkaDeliveryTimeoutMs int
-
-	// Minimum amount of data (bytes) broker should return per fetch.
-	// Larger values improve throughput, smaller improves latency.
-	KafkaConsumerFetchMinBytes int
-
-	// Max wait time (in ms) for broker to accumulate fetch.min.bytes.
-	KafkaConsumerFetchWaitMaxMs int
-
-	// Max data per partition (bytes) consumer will fetch in one request.
-	KafkaConsumerMaxPartitionFetchBytes int
-
-	// Minimum number of messages to keep queued locally in consumer memory.
-	KafkaConsumerQueuedMinMessages int
-
-	// Max memory (KB) for consumer's local prefetch buffer.
-	KafkaConsumerQueuedMaxMessagesKbytes int
-
-	// If true, Kafka automatically commits offsets back to broker.
-	// If false, app must commit manually.
-	KafkaConsumerEnableAutoCommit bool
-
-	// How often (in ms) to commit offsets when auto-commit is enabled.
-	KafkaConsumerAutoCommitIntervalMs int
 }
 
 type OutboundSender interface {
@@ -311,8 +246,6 @@ type CaduceusOutboundSender struct {
 	sqsBatchTicker                   *time.Ticker
 	flushInterval                    time.Duration
 	waitTimeSeconds                  int64
-	kafkaProducer                    *kafka.Producer
-	kafkaConsumer                    *kafka.Consumer
 	kafkaTopic                       string
 	kafkaClient                      *kgo.Client
 }
@@ -522,7 +455,7 @@ func (osf OutboundSenderFactory) getFranzProducerOptions() ([]kgo.Opt, error) {
 func (osf OutboundSenderFactory) getFranzConsumerOptions() ([]kgo.Opt, error) {
 	opts := []kgo.Opt{
 		kgo.ConsumeTopics(osf.KafkaTopic),
-		kgo.ConsumerGroup("caduceus-perf"),
+		kgo.ConsumerGroup(osf.KafkaConsumerGroupID),
 	}
 
 	return opts, nil
@@ -894,7 +827,7 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			obs.flushSqsBatch()
 		}
 		return
-	} else if obs.kafkaProducer != nil {
+	} else if obs.kafkaClient != nil {
 		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			fmt.Println("error while marshalling msg for Kafka ", err)
@@ -1032,7 +965,7 @@ Loop:
 				}
 				level.Info(obs.logger).Log(logging.MessageKey(), "Message deleted from AWS Sqs having message Id: "+*sqsMsg.MessageId)
 			}
-		} else if obs.kafkaConsumer != nil {
+		} else if obs.kafkaClient != nil {
 			for {
 				fetches := obs.kafkaClient.PollFetches(context.Background())
 

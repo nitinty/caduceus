@@ -86,15 +86,8 @@ type Kafka struct {
 }
 
 type KafkaProducer struct {
-	KafkaAcks                      string
-	KafkaCompression               string
-	KafkaLingerMs                  int
-	KafkaBatchNumMessages          int
-	KafkaQueueBufferingMaxKbytes   int
-	KafkaQueueBufferingMaxMessages int
-	KafkaEnableIdempotence         bool
-	KafkaMaxInFlight               int
-	KafkaDeliveryTimeoutMs         int
+	KafkaAcks        string
+	KafkaCompression string
 }
 
 type KafkaConsumer struct {
