@@ -1008,7 +1008,7 @@ Loop:
 					obs.sendMessage(msg)
 				})
 			}
-		} else if obs.sqsClient == nil && obs.kafkaClient == nil {
+		} else if !obs.consumeSqsMessageEnabled && !obs.consumeKafkaMessageEnabled {
 			// Always pull a new queue in case we have been cutoff or are shutting
 			// down.
 			msgQueue := obs.queue.Load().(chan *wrp.Message)
