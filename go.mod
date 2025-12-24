@@ -5,12 +5,11 @@ go 1.24.0
 toolchain go1.24.6
 
 // replace github.com/xmidt-org/ancla => /Users/chaitanyasingla/Desktop/Personal/forked-repo/ancla
-replace github.com/xmidt-org/ancla => github.com/ChaitanyaSingla/ancla v0.0.0-20250502092626-4af5b60659b9
+replace github.com/xmidt-org/ancla => github.com/ChaitanyaSingla/ancla v0.0.0-20251224062147-706cf043dfb1
 
 require (
 	emperror.dev/emperror v0.33.0
 	github.com/aws/aws-sdk-go v1.44.83
-	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v3.2.0+incompatible
@@ -21,6 +20,7 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
 	github.com/twmb/franz-go v1.20.5
+	github.com/twmb/franz-go/pkg/kmsg v1.12.0
 	github.com/xmidt-org/ancla v0.3.10
 	github.com/xmidt-org/bascule v0.11.0
 	github.com/xmidt-org/candlelight v0.0.10
@@ -100,7 +100,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/objx v0.4.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/xmidt-org/argus v0.9.1 // indirect
 	github.com/xmidt-org/arrange v0.3.0 // indirect

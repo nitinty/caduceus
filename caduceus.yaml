@@ -463,9 +463,6 @@ sender:
     # List of Kafka brokers (comma-separated if multiple)
     kafkaBrokers: localhost:9092
 
-    # Kafka topic where messages will be published/consumed
-    kafkaTopic: caduceus-local
-
     # Consumer group ID (all consumers with the same ID share the work)
     kafkaConsumerGroupID: caduceus-groupId
 

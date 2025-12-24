@@ -114,9 +114,6 @@ type SenderWrapperFactory struct {
 	// List of Kafka brokers (comma-separated if multiple)
 	KafkaBrokers string
 
-	// Kafka topic where messages will be published/consumed
-	KafkaTopic string
-
 	// Consumer group ID (all consumers with the same ID share the work)
 	KafkaConsumerGroupID string
 
@@ -174,7 +171,6 @@ type CaduceusSenderWrapper struct {
 	consumeSqsMessageEnabled   bool
 	kafkaEnabled               bool
 	kafkaBrokers               string
-	kafkaTopic                 string
 	kafkaConsumerGroupID       string
 	consumeKafkaMessageEnabled bool
 	kafkaAcks                  string
@@ -211,7 +207,6 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 		consumeSqsMessageEnabled:   swf.ConsumeSqsMessageEnabled,
 		kafkaEnabled:               swf.KafkaEnabled,
 		kafkaBrokers:               swf.KafkaBrokers,
-		kafkaTopic:                 swf.KafkaTopic,
 		kafkaConsumerGroupID:       swf.KafkaConsumerGroupID,
 		consumeKafkaMessageEnabled: swf.ConsumeKafkaMessageEnabled,
 		kafkaAcks:                  swf.KafkaAcks,
@@ -269,7 +264,6 @@ func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 		ConsumeSqsMessageEnabled:   sw.consumeSqsMessageEnabled,
 		KafkaEnabled:               sw.kafkaEnabled,
 		KafkaBrokers:               sw.kafkaBrokers,
-		KafkaTopic:                 sw.kafkaTopic,
 		KafkaConsumerGroupID:       sw.kafkaConsumerGroupID,
 		ConsumeKafkaMessageEnabled: sw.consumeKafkaMessageEnabled,
 		KafkaAcks:                  sw.kafkaAcks,

@@ -166,9 +166,6 @@ type OutboundSenderFactory struct {
 	// List of Kafka brokers (comma-separated if multiple)
 	KafkaBrokers string
 
-	// Kafka topic where messages will be published/consumed
-	KafkaTopic string
-
 	// Consumer group ID (all consumers with the same ID share the work)
 	KafkaConsumerGroupID string
 
@@ -369,8 +366,8 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 			}
 		}()
 	} else if osf.KafkaEnabled {
-		fmt.Println("Kafka Enabled with brokers:", osf.KafkaBrokers)
-		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka Enabled with brokers:", osf.KafkaBrokers)
+		fmt.Println("Kafka Enabled with brokers:" + osf.KafkaBrokers + " and topic:" + osf.Listener.Webhook.KafkaTopic)
+		level.Info(caduceusOutboundSender.logger).Log(logging.MessageKey(), "Kafka Enabled with brokers:"+osf.KafkaBrokers+" and topic:"+osf.Listener.Webhook.KafkaTopic)
 
 		producerOpts, err := osf.getFranzProducerOptions()
 		if err != nil {
@@ -412,7 +409,7 @@ func (osf OutboundSenderFactory) New() (obs OutboundSender, err error) {
 
 		caduceusOutboundSender.kafkaClient = client
 		caduceusOutboundSender.consumeKafkaMessageEnabled = osf.ConsumeKafkaMessageEnabled
-		caduceusOutboundSender.kafkaTopic = osf.KafkaTopic
+		caduceusOutboundSender.kafkaTopic = osf.Listener.Webhook.KafkaTopic
 	}
 
 	// Don't share the secret with others when there is an error.
@@ -477,7 +474,7 @@ func (osf OutboundSenderFactory) getFranzProducerOptions() ([]kgo.Opt, error) {
 
 func (osf OutboundSenderFactory) getFranzConsumerOptions() ([]kgo.Opt, error) {
 	opts := []kgo.Opt{
-		kgo.ConsumeTopics(osf.KafkaTopic),
+		kgo.ConsumeTopics(osf.Listener.Webhook.KafkaTopic),
 		kgo.ConsumerGroup(osf.KafkaConsumerGroupID),
 	}
 
@@ -490,7 +487,7 @@ func (osf OutboundSenderFactory) ensureKafkaTopicExists(client *kgo.Client) erro
 
 	// Check if the topic exists
 	metaReq := kmsg.NewMetadataRequest()
-	metaReq.Topics = []kmsg.MetadataRequestTopic{{Topic: kmsg.StringPtr(osf.KafkaTopic)}}
+	metaReq.Topics = []kmsg.MetadataRequestTopic{{Topic: kmsg.StringPtr(osf.Listener.Webhook.KafkaTopic)}}
 	metaResp, err := metaReq.RequestWith(ctx, client)
 	if err != nil {
 		fmt.Println("Kafka metadata request failed: " + err.Error())
@@ -498,18 +495,18 @@ func (osf OutboundSenderFactory) ensureKafkaTopicExists(client *kgo.Client) erro
 		return fmt.Errorf("Kafka metadata request failed: %w", err)
 	}
 	for _, t := range metaResp.Topics {
-		if t.Topic != nil && *t.Topic == osf.KafkaTopic && t.ErrorCode == 0 {
-			fmt.Println("Kafka topic exists: " + osf.KafkaTopic)
-			level.Info(osf.Logger).Log(logging.MessageKey(), "Kafka topic exists: "+osf.KafkaTopic)
+		if t.Topic != nil && *t.Topic == osf.Listener.Webhook.KafkaTopic && t.ErrorCode == 0 {
+			fmt.Println("Kafka topic exists: " + osf.Listener.Webhook.KafkaTopic)
+			level.Info(osf.Logger).Log(logging.MessageKey(), "Kafka topic exists: "+osf.Listener.Webhook.KafkaTopic)
 			return nil
 		}
 	}
 
 	// Create the topic if it doesn't exist
-	level.Info(osf.Logger).Log(logging.MessageKey(), "Creating Kafka topic: "+osf.KafkaTopic)
+	level.Info(osf.Logger).Log(logging.MessageKey(), "Creating Kafka topic: "+osf.Listener.Webhook.KafkaTopic)
 	createReq := kmsg.NewCreateTopicsRequest()
 	createReq.Topics = []kmsg.CreateTopicsRequestTopic{{
-		Topic:             osf.KafkaTopic,
+		Topic:             osf.Listener.Webhook.KafkaTopic,
 		NumPartitions:     3,
 		ReplicationFactor: 1,
 	}}
@@ -574,7 +571,7 @@ func (obs *CaduceusOutboundSender) flushSqsBatch() {
 }
 
 func (osf OutboundSenderFactory) getQueueName() string {
-	queueName := osf.Listener.Webhook.CaduceusQueueName
+	queueName := osf.Listener.Webhook.SqsQueue
 	if osf.FifoBasedQueue && !strings.HasSuffix(queueName, ".fifo") {
 		queueName += ".fifo"
 	}

@@ -158,7 +158,6 @@ func caduceus(arguments []string) int {
 		ConsumeSqsMessageEnabled:   caduceusConfig.Sender.AwsSqs.ConsumeSqsMessageEnabled,
 		KafkaEnabled:               caduceusConfig.Sender.Kafka.KafkaEnabled,
 		KafkaBrokers:               caduceusConfig.Sender.Kafka.KafkaBrokers,
-		KafkaTopic:                 caduceusConfig.Sender.Kafka.KafkaTopic,
 		KafkaConsumerGroupID:       caduceusConfig.Sender.Kafka.KafkaConsumerGroupID,
 		ConsumeKafkaMessageEnabled: caduceusConfig.Sender.Kafka.ConsumeKafkaMessageEnabled,
 		KafkaAcks:                  caduceusConfig.Sender.Kafka.KafkaProducer.KafkaAcks,
