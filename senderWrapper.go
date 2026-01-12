@@ -123,6 +123,24 @@ type SenderWrapperFactory struct {
 	// Compression type to use when sending messages.
 	// Options: "lz4", "zstd", "snappy", "gzip", "none".
 	KafkaCompression string
+
+	// Kafka SASL authentication mechanism
+	KafkaSaslMechanism string
+
+	// Kafka secret name
+	KafkaSecretName string
+
+	// Kafka truststore file path
+	KafkaTrustStore string
+
+	// Kafka security protocol
+	KafkaSecurityProtocol string
+
+	// Kafka username key
+	KafkaUsernameKey string
+
+	// Kafka password key
+	KafkaPasswordKey string
 }
 
 type SenderWrapper interface {
@@ -133,74 +151,86 @@ type SenderWrapper interface {
 
 // CaduceusSenderWrapper contains no external parameters.
 type CaduceusSenderWrapper struct {
-	sender              httpClient
-	numWorkersPerSender int
-	queueSizePerSender  int
-	deliveryRetries     int
-	deliveryInterval    time.Duration
-	cutOffPeriod        time.Duration
-	linger              time.Duration
-	logger              log.Logger
-	mutex               sync.RWMutex
-	senders             map[string]OutboundSender
-	metricsRegistry     CaduceusMetricsRegistry
-	eventType           metrics.Counter
-	queryLatency        metrics.Histogram
-	wg                  sync.WaitGroup
-	shutdown            chan struct{}
-	customPIDs          []string
-	disablePartnerIDs   bool
-	awsSqsEnabled       bool
-	awsRegion           string
-	roleBasedAccess     bool
-	accessKey           string
-	secretKey           string
-	fifoBasedQueue      bool
-	kmsEnabled          bool
-	kmsKeyARN           string
-	flushInterval       time.Duration
-	waitTimeSeconds     int64
+	sender                     httpClient
+	numWorkersPerSender        int
+	queueSizePerSender         int
+	deliveryRetries            int
+	deliveryInterval           time.Duration
+	cutOffPeriod               time.Duration
+	linger                     time.Duration
+	logger                     log.Logger
+	mutex                      sync.RWMutex
+	senders                    map[string]OutboundSender
+	metricsRegistry            CaduceusMetricsRegistry
+	eventType                  metrics.Counter
+	queryLatency               metrics.Histogram
+	wg                         sync.WaitGroup
+	shutdown                   chan struct{}
+	customPIDs                 []string
+	disablePartnerIDs          bool
+	awsSqsEnabled              bool
+	awsRegion                  string
+	roleBasedAccess            bool
+	accessKey                  string
+	secretKey                  string
+	fifoBasedQueue             bool
+	kmsEnabled                 bool
+	kmsKeyARN                  string
+	flushInterval              time.Duration
+	waitTimeSeconds            int64
 	consumeSqsMessageEnabled   bool
-    kafkaEnabled               bool
-    kafkaBrokers               string
-    kafkaConsumerGroupID       string
-    consumeKafkaMessageEnabled bool
-    kafkaAcks                  string
-    kafkaCompression           string
+	kafkaEnabled               bool
+	kafkaBrokers               string
+	kafkaConsumerGroupID       string
+	consumeKafkaMessageEnabled bool
+	kafkaAcks                  string
+	kafkaCompression           string
+	kafkaSaslMechanism         string
+	kafkaSecretName            string
+	kafkaTrustStore            string
+	kafkaSecurityProtocol      string
+	kafkaUsernameKey           string
+	kafkaPasswordKey           string
 }
 
 // New produces a new SenderWrapper implemented by CaduceusSenderWrapper
 // based on the factory configuration.
 func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 	caduceusSenderWrapper := &CaduceusSenderWrapper{
-		sender:              swf.Sender,
-		numWorkersPerSender: swf.NumWorkersPerSender,
-		queueSizePerSender:  swf.QueueSizePerSender,
-		deliveryRetries:     swf.DeliveryRetries,
-		deliveryInterval:    swf.DeliveryInterval,
-		cutOffPeriod:        swf.CutOffPeriod,
-		linger:              swf.Linger,
-		logger:              swf.Logger,
-		metricsRegistry:     swf.MetricsRegistry,
-		customPIDs:          swf.CustomPIDs,
-		disablePartnerIDs:   swf.DisablePartnerIDs,
-		awsSqsEnabled:       swf.AwsSqsEnabled,
-		awsRegion:           swf.AwsRegion,
-		roleBasedAccess:     swf.RoleBasedAccess,
-		accessKey:           swf.AccessKey,
-		secretKey:           swf.SecretKey,
-		fifoBasedQueue:      swf.FifoBasedQueue,
-		kmsEnabled:          swf.KmsEnabled,
-		kmsKeyARN:           swf.KmsKeyARN,
-		flushInterval:       swf.FlushInterval,
-		waitTimeSeconds:     swf.WaitTimeSeconds,
+		sender:                     swf.Sender,
+		numWorkersPerSender:        swf.NumWorkersPerSender,
+		queueSizePerSender:         swf.QueueSizePerSender,
+		deliveryRetries:            swf.DeliveryRetries,
+		deliveryInterval:           swf.DeliveryInterval,
+		cutOffPeriod:               swf.CutOffPeriod,
+		linger:                     swf.Linger,
+		logger:                     swf.Logger,
+		metricsRegistry:            swf.MetricsRegistry,
+		customPIDs:                 swf.CustomPIDs,
+		disablePartnerIDs:          swf.DisablePartnerIDs,
+		awsSqsEnabled:              swf.AwsSqsEnabled,
+		awsRegion:                  swf.AwsRegion,
+		roleBasedAccess:            swf.RoleBasedAccess,
+		accessKey:                  swf.AccessKey,
+		secretKey:                  swf.SecretKey,
+		fifoBasedQueue:             swf.FifoBasedQueue,
+		kmsEnabled:                 swf.KmsEnabled,
+		kmsKeyARN:                  swf.KmsKeyARN,
+		flushInterval:              swf.FlushInterval,
+		waitTimeSeconds:            swf.WaitTimeSeconds,
 		consumeSqsMessageEnabled:   swf.ConsumeSqsMessageEnabled,
-        kafkaEnabled:               swf.KafkaEnabled,
-        kafkaBrokers:               swf.KafkaBrokers,
-        kafkaConsumerGroupID:       swf.KafkaConsumerGroupID,
-        consumeKafkaMessageEnabled: swf.ConsumeKafkaMessageEnabled,
-        kafkaAcks:                  swf.KafkaAcks,
-        kafkaCompression:           swf.KafkaCompression,
+		kafkaEnabled:               swf.KafkaEnabled,
+		kafkaBrokers:               swf.KafkaBrokers,
+		kafkaConsumerGroupID:       swf.KafkaConsumerGroupID,
+		consumeKafkaMessageEnabled: swf.ConsumeKafkaMessageEnabled,
+		kafkaAcks:                  swf.KafkaAcks,
+		kafkaCompression:           swf.KafkaCompression,
+		kafkaSaslMechanism:         swf.KafkaSaslMechanism,
+		kafkaSecretName:            swf.KafkaSecretName,
+		kafkaTrustStore:            swf.KafkaTrustStore,
+		kafkaSecurityProtocol:      swf.KafkaSecurityProtocol,
+		kafkaUsernameKey:           swf.KafkaUsernameKey,
+		kafkaPasswordKey:           swf.KafkaPasswordKey,
 	}
 
 	if swf.Linger <= 0 {
@@ -228,34 +258,40 @@ func (swf SenderWrapperFactory) New() (sw SenderWrapper, err error) {
 func (sw *CaduceusSenderWrapper) Update(list []ancla.InternalWebhook) {
 	// We'll like need this, so let's get one ready
 	osf := OutboundSenderFactory{
-		Sender:            sw.sender,
-		CutOffPeriod:      sw.cutOffPeriod,
-		NumWorkers:        sw.numWorkersPerSender,
-		QueueSize:         sw.queueSizePerSender,
-		MetricsRegistry:   sw.metricsRegistry,
-		DeliveryRetries:   sw.deliveryRetries,
-		DeliveryInterval:  sw.deliveryInterval,
-		Logger:            sw.logger,
-		CustomPIDs:        sw.customPIDs,
-		DisablePartnerIDs: sw.disablePartnerIDs,
-		QueryLatency:      sw.queryLatency,
-		AwsSqsEnabled:     sw.awsSqsEnabled,
-		AwsRegion:         sw.awsRegion,
-		RoleBasedAccess:   sw.roleBasedAccess,
-		AccessKey:         sw.accessKey,
-		SecretKey:         sw.secretKey,
-		FifoBasedQueue:    sw.fifoBasedQueue,
-		KmsEnabled:        sw.kmsEnabled,
-		KmsKeyARN:         sw.kmsKeyARN,
-		FlushInterval:     sw.flushInterval,
-		WaitTimeSeconds:   sw.waitTimeSeconds,
+		Sender:                     sw.sender,
+		CutOffPeriod:               sw.cutOffPeriod,
+		NumWorkers:                 sw.numWorkersPerSender,
+		QueueSize:                  sw.queueSizePerSender,
+		MetricsRegistry:            sw.metricsRegistry,
+		DeliveryRetries:            sw.deliveryRetries,
+		DeliveryInterval:           sw.deliveryInterval,
+		Logger:                     sw.logger,
+		CustomPIDs:                 sw.customPIDs,
+		DisablePartnerIDs:          sw.disablePartnerIDs,
+		QueryLatency:               sw.queryLatency,
+		AwsSqsEnabled:              sw.awsSqsEnabled,
+		AwsRegion:                  sw.awsRegion,
+		RoleBasedAccess:            sw.roleBasedAccess,
+		AccessKey:                  sw.accessKey,
+		SecretKey:                  sw.secretKey,
+		FifoBasedQueue:             sw.fifoBasedQueue,
+		KmsEnabled:                 sw.kmsEnabled,
+		KmsKeyARN:                  sw.kmsKeyARN,
+		FlushInterval:              sw.flushInterval,
+		WaitTimeSeconds:            sw.waitTimeSeconds,
 		ConsumeSqsMessageEnabled:   sw.consumeSqsMessageEnabled,
-        KafkaEnabled:               sw.kafkaEnabled,
-        KafkaBrokers:               sw.kafkaBrokers,
-        KafkaConsumerGroupID:       sw.kafkaConsumerGroupID,
-        ConsumeKafkaMessageEnabled: sw.consumeKafkaMessageEnabled,
-        KafkaAcks:                  sw.kafkaAcks,
-        KafkaCompression:           sw.kafkaCompression,
+		KafkaEnabled:               sw.kafkaEnabled,
+		KafkaBrokers:               sw.kafkaBrokers,
+		KafkaConsumerGroupID:       sw.kafkaConsumerGroupID,
+		ConsumeKafkaMessageEnabled: sw.consumeKafkaMessageEnabled,
+		KafkaAcks:                  sw.kafkaAcks,
+		KafkaCompression:           sw.kafkaCompression,
+		KafkaSaslMechanism:         sw.kafkaSaslMechanism,
+		KafkaSecretName:            sw.kafkaSecretName,
+		KafkaTrustStore:            sw.kafkaTrustStore,
+		KafkaSecurityProtocol:      sw.kafkaSecurityProtocol,
+		KafkaUsernameKey:           sw.kafkaUsernameKey,
+		KafkaPasswordKey:           sw.kafkaPasswordKey,
 	}
 
 	ids := make([]struct {

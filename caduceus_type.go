@@ -80,8 +80,14 @@ type Kafka struct {
 }
 
 type KafkaProducer struct {
-	KafkaAcks        string
-	KafkaCompression string
+	KafkaAcks             string
+	KafkaCompression      string
+	KafkaSaslMechanism    string
+	KafkaSecretName       string
+	KafkaTrustStore       string
+	KafkaSecurityProtocol string
+	KafkaUsernameKey      string
+	KafkaPasswordKey      string
 }
 
 type CaduceusMetricsRegistry interface {

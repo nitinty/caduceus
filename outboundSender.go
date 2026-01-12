@@ -23,6 +23,8 @@ import (
 	"crypto/hmac"
 	cr "crypto/rand"
 	"crypto/sha1"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -44,6 +46,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -51,6 +54,8 @@ import (
 	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/kmsg"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 	"github.com/xmidt-org/ancla"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/logging"
@@ -175,6 +180,24 @@ type OutboundSenderFactory struct {
 	// Compression type to use when sending messages.
 	// Options: "lz4", "zstd", "snappy", "gzip", "none".
 	KafkaCompression string
+
+	// Kafka SASL authentication mechanism
+	KafkaSaslMechanism string
+
+	// Kafka secret name
+	KafkaSecretName string
+
+	// Kafka truststore file path
+	KafkaTrustStore string
+
+	// Kafka security protocol
+	KafkaSecurityProtocol string
+
+	// Kafka username key
+	KafkaUsernameKey string
+
+	// Kafka password key
+	KafkaPasswordKey string
 }
 
 type OutboundSender interface {
@@ -451,6 +474,81 @@ func (osf OutboundSenderFactory) getFranzProducerOptions() ([]kgo.Opt, error) {
 		kgo.SeedBrokers(osf.KafkaBrokers),
 		kgo.RequiredAcks(acks),
 		kgo.ProducerBatchCompression(compressionCodecs),
+	}
+
+	if osf.KafkaSecurityProtocol != "" && strings.ToLower(osf.KafkaSecurityProtocol) != "plaintext" {
+		if strings.Contains(strings.ToLower(osf.KafkaSecurityProtocol), "ssl") || strings.Contains(strings.ToLower(osf.KafkaSecurityProtocol), "tls") {
+			tlsConfig := &tls.Config{
+				InsecureSkipVerify: false,
+			}
+			if osf.KafkaTrustStore != "" {
+				rootCAs := x509.NewCertPool()
+				data, err := os.ReadFile(osf.KafkaTrustStore)
+				if err != nil {
+					return nil, fmt.Errorf("unable to read Kafka truststore PEM file: %w", err)
+				}
+				ok := rootCAs.AppendCertsFromPEM(data)
+				if !ok {
+					return nil, fmt.Errorf("failed to append Kafka truststore PEM certs")
+				}
+				tlsConfig.RootCAs = rootCAs
+			}
+			opts = append(opts, kgo.DialTLSConfig(tlsConfig))
+		}
+	}
+
+	if osf.KafkaSaslMechanism != "" && osf.KafkaSecretName != "" {
+		awsSess, err := session.NewSession(&aws.Config{
+			Region: aws.String(osf.AwsRegion),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create AWS session for Kafka credentials: %w", err)
+		}
+		smClient := secretsmanager.New(awsSess)
+
+		secretOutput, err := smClient.GetSecretValue(&secretsmanager.GetSecretValueInput{
+			SecretId: aws.String(osf.KafkaSecretName),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Kafka secrets from AWS Secrets Manager: %w", err)
+		}
+
+		var username, password string
+		if secretOutput.SecretString != nil {
+			var secretData map[string]string
+			err = json.Unmarshal([]byte(*secretOutput.SecretString), &secretData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal Kafka secret string: %w", err)
+			}
+
+			u, uok := secretData[osf.KafkaUsernameKey]
+			p, pok := secretData[osf.KafkaPasswordKey]
+			if !uok || !pok {
+				return nil, fmt.Errorf("Kafka secret missing required keys: %q, %q", osf.KafkaUsernameKey, osf.KafkaPasswordKey)
+			}
+			username = u
+			password = p
+		} else {
+			return nil, fmt.Errorf("Kafka secret string not found in AWS Secrets Manager")
+		}
+
+		switch strings.ToLower(osf.KafkaSaslMechanism) {
+		case "plain":
+			opts = append(opts, kgo.SASL(plain.Auth{
+				User: username,
+				Pass: password,
+			}.AsMechanism()))
+		case "scram-sha-256":
+			opts = append(opts, kgo.SASL(scram.Auth{
+				User: username,
+				Pass: password,
+			}.AsSha256Mechanism()))
+		case "scram-sha-512":
+			opts = append(opts, kgo.SASL(scram.Auth{
+				User: username,
+				Pass: password,
+			}.AsSha512Mechanism()))
+		}
 	}
 
 	return opts, nil

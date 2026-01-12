@@ -477,6 +477,24 @@ sender:
       # Options: lz4, zstd, snappy, gzip, none
       kafkaCompression: lz4
 
+      # Kafka SASL authentication mechanism
+      kafkaSaslMechanism: plain
+
+      # Kafka secret name
+      kafkaSecretName: caduceus-secret
+
+      # Kafka truststore file path
+      kafkaTrustStore: /etc/caduceus/truststore.jks
+
+      # Kafka security protocol
+      kafkaSecurityProtocol: PLAINTEXT
+
+      # Kafka username key
+      kafkaUsernameKey: username
+
+      # Kafka password key
+      kafkaPasswordKey: password
+
 # (Deprecated)
 # profilerFrequency: 15
 # profilerDuration: 15

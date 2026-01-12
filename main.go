@@ -156,6 +156,12 @@ func caduceus(arguments []string) int {
 		ConsumeKafkaMessageEnabled: caduceusConfig.Sender.Kafka.ConsumeKafkaMessageEnabled,
 		KafkaAcks:                  caduceusConfig.Sender.Kafka.KafkaProducer.KafkaAcks,
 		KafkaCompression:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaCompression,
+		KafkaSaslMechanism:         caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSaslMechanism,
+		KafkaSecretName:            caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSecretName,
+		KafkaTrustStore:            caduceusConfig.Sender.Kafka.KafkaProducer.KafkaTrustStore,
+		KafkaSecurityProtocol:      caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSecurityProtocol,
+		KafkaUsernameKey:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaUsernameKey,
+		KafkaPasswordKey:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaPasswordKey,
 	}.New()
 
 	if err != nil {
