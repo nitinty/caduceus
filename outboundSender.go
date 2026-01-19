@@ -1015,6 +1015,8 @@ func (obs *CaduceusOutboundSender) Queue(msg *wrp.Message) {
 			Headers: obs.kafkaMessageHeaders,
 		}
 
+		fmt.Println("This is the Kafka message: ", record)
+		fmt.Println("This is the Kafka message headers: ", record.Headers)
 		obs.kafkaClient.Produce(context.Background(), record, func(r *kgo.Record, err error) {
 			if err != nil && !kerr.IsRetriable(err) {
 				obs.failedSendToKafkaMsgsCount.With("url", obs.id, "source", "kafka").Add(1.0)
