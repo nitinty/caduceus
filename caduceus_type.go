@@ -74,20 +74,20 @@ type AwsSqs struct {
 type Kafka struct {
 	KafkaEnabled               bool
 	KafkaBrokers               string
+	KafkaSaslMechanism         string
+	KafkaSecretName            string
+	KafkaTrustStore            string
+	KafkaSecurityProtocol      string
+	KafkaUsernameKey           string
+	KafkaPasswordKey           string
 	KafkaConsumerGroupID       string
 	ConsumeKafkaMessageEnabled bool
 	KafkaProducer              KafkaProducer
 }
 
 type KafkaProducer struct {
-	KafkaAcks             string
-	KafkaCompression      string
-	KafkaSaslMechanism    string
-	KafkaSecretName       string
-	KafkaTrustStore       string
-	KafkaSecurityProtocol string
-	KafkaUsernameKey      string
-	KafkaPasswordKey      string
+	KafkaAcks        string
+	KafkaCompression string
 }
 
 type CaduceusMetricsRegistry interface {

@@ -152,16 +152,16 @@ func caduceus(arguments []string) int {
 		ConsumeSqsMessageEnabled:   caduceusConfig.Sender.AwsSqs.ConsumeSqsMessageEnabled,
 		KafkaEnabled:               caduceusConfig.Sender.Kafka.KafkaEnabled,
 		KafkaBrokers:               caduceusConfig.Sender.Kafka.KafkaBrokers,
+		KafkaSaslMechanism:         caduceusConfig.Sender.Kafka.KafkaSaslMechanism,
+		KafkaSecretName:            caduceusConfig.Sender.Kafka.KafkaSecretName,
+		KafkaTrustStore:            caduceusConfig.Sender.Kafka.KafkaTrustStore,
+		KafkaSecurityProtocol:      caduceusConfig.Sender.Kafka.KafkaSecurityProtocol,
+		KafkaUsernameKey:           caduceusConfig.Sender.Kafka.KafkaUsernameKey,
+		KafkaPasswordKey:           caduceusConfig.Sender.Kafka.KafkaPasswordKey,
 		KafkaConsumerGroupID:       caduceusConfig.Sender.Kafka.KafkaConsumerGroupID,
 		ConsumeKafkaMessageEnabled: caduceusConfig.Sender.Kafka.ConsumeKafkaMessageEnabled,
 		KafkaAcks:                  caduceusConfig.Sender.Kafka.KafkaProducer.KafkaAcks,
 		KafkaCompression:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaCompression,
-		KafkaSaslMechanism:         caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSaslMechanism,
-		KafkaSecretName:            caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSecretName,
-		KafkaTrustStore:            caduceusConfig.Sender.Kafka.KafkaProducer.KafkaTrustStore,
-		KafkaSecurityProtocol:      caduceusConfig.Sender.Kafka.KafkaProducer.KafkaSecurityProtocol,
-		KafkaUsernameKey:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaUsernameKey,
-		KafkaPasswordKey:           caduceusConfig.Sender.Kafka.KafkaProducer.KafkaPasswordKey,
 	}.New()
 
 	if err != nil {
