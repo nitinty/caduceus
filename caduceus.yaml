@@ -467,7 +467,7 @@ sender:
     kafkaSecretName: caduceus-secret
 
     # Kafka truststore file path
-    kafkaTrustStore: /etc/caduceus/truststore.jks
+    kafkaTrustStore: /etc/caduceus/ca.crt
 
     # Kafka security protocol
     kafkaSecurityProtocol: PLAINTEXT
